@@ -5,7 +5,9 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Home, PlusCircle, BarChart3, TargetIcon, Users, Award, LogOut, Leaf, Menu, X, 
-  User
+  User,
+  BookOpen,
+  ChevronRight
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
@@ -40,27 +42,35 @@ export function Sidebar() {
     { href: "/challenges", icon: <TargetIcon size={20} />, label: "Challenges" },
     { href: "/community", icon: <Users size={20} />, label: "Community" },
     { href: "/achievements", icon: <Award size={20} />, label: "Achievements" },
+    { href: "/study", icon: <BookOpen size={20} />, label: "Study" },
   ];
 
   const sidebarContent = (
     <div className="flex flex-col h-full p-6">
       {/* Sidebar Logo */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <Leaf size={24} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-black text-white uppercase italic tracking-tight">
-              ELIA<span className="text-emerald-500">.</span>
-            </h1>
-            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em]">Sustainability</p>
-          </div>
-        </div>
-      </div>
+    <div className="mb-8">
+  <div className="flex items-center gap-3">
+    
+     
+      <img 
+        src="/image.png" 
+        alt="ELIA Logo" 
+        className="w-full h-full object-contain rounded-lg"
+        onError={(e) => {
+          // Fallback if image doesn't exist
+          const target = e.target as HTMLImageElement;
+          target.style.display = 'none';
+          const fallback = document.createElement('div');
+          fallback.className = 'w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-500 to-blue-500 rounded-lg';
+          fallback.innerHTML = '<span class="text-white font-black text-sm">E</span>';
+          target.parentNode?.appendChild(fallback);
+        }}
+      />
+    </div>
 
+</div>
       {/* Navigation */}
-      <nav className="flex-1 space-y-2 overflow-y-auto custom-scrollbar pr-2">
+      <nav className="flex-1 space-y-2 overflow-y-auto pr-2 sidebar-scroll">
         {navItems.map((item) => (
           <NavItem 
             key={item.href}
@@ -82,12 +92,13 @@ export function Sidebar() {
         />
         <button 
           onClick={signOut}
-          className="w-full flex items-center gap-3 p-3 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 group"
+          className="w-full flex items-center gap-3 p-3 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 group relative overflow-hidden"
         >
-          <div className="p-2 rounded-lg bg-zinc-800/50 group-hover:bg-red-500/20 transition-colors">
+          <div className="p-2 rounded-lg bg-zinc-800/50 group-hover:bg-red-500/20 transition-colors z-10">
             <LogOut size={20} />
           </div>
-          <span className="text-sm font-bold">Logout</span>
+          <span className="text-sm font-bold z-10">Logout</span>
+          <ChevronRight className="ml-auto w-4 h-4 text-zinc-700 group-hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-[-10px] group-hover:translate-x-0" />
         </button>
       </div>
     </div>
@@ -98,7 +109,7 @@ export function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-6 left-6 z-[60] p-3 bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-2xl shadow-2xl flex items-center justify-center text-white"
+        className="lg:hidden fixed top-6 left-6 z-[60] p-3 bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-2xl shadow-2xl flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-transform"
       >
         {isOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
@@ -139,7 +150,7 @@ function NavItem({ href, icon, label, active }: {
   href: string, 
   icon: React.ReactNode, 
   label: string, 
-  active?: boolean 
+  active?: boolean
 }) {
   return (
     <Link href={href} className="block">
@@ -163,10 +174,7 @@ function NavItem({ href, icon, label, active }: {
           {label}
         </span>
         {active && (
-          <motion.div 
-            layoutId="active-nav-glow"
-            className="ml-auto w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_10px_#10b981]"
-          />
+          <div className="ml-auto w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_10px_#10b981]" />
         )}
       </motion.div>
     </Link>

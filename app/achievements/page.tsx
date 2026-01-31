@@ -73,9 +73,6 @@ export default function AchievementsPage() {
       <div className="max-w-[1200px] mx-auto px-6 py-12 relative z-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
           <div className="space-y-4">
-            <Link href="/" className="inline-flex items-center gap-2 text-zinc-500 hover:text-white transition-colors uppercase text-[10px] font-black tracking-widest mb-2">
-              <ArrowLeft className="w-3.5 h-3.5" /> Return to Nexus
-            </Link>
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-[0_0_30px_rgba(245,158,11,0.2)]">
                 <Trophy size={32} className="text-white" />
