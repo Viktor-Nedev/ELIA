@@ -32,6 +32,9 @@ export default function JournalPage() {
     content: string;
     timestamp: Date;
   }>>([]);
+  const [followUpAnswer, setFollowUpAnswer] = useState("");
+  const [followUpHistory, setFollowUpHistory] = useState<{ question: string, answer: string }[]>([]);
+  const [stats, setStats] = useState({ streak: 0, lastEntry: "Never" });
 
   const quickPrompts = [
     "Biked to work instead of driving",
@@ -44,30 +47,66 @@ export default function JournalPage() {
     "Conserved water while washing dishes"
   ];
 
-  // Load today's entry if exists
+  // Load today's entry and stats
   useEffect(() => {
-    const fetchToday = async () => {
+    const fetchData = async () => {
       if (!user) return;
       try {
-        const todayEntry = await sustainabilityService.getEntryForToday(user.uid);
+        const [todayEntry, recentEntries] = await Promise.all([
+          sustainabilityService.getEntryForToday(user.uid),
+          sustainabilityService.getRecentEntries(user.uid, 14)
+        ]);
+
         if (todayEntry) {
           setText(todayEntry.rawText);
           setIsRevision(true);
-          // Initialize conversation with existing entry
           setConversation([{
             role: 'user',
             content: todayEntry.rawText,
             timestamp: new Date()
           }]);
         }
+
+        // Calculate Stats
+        if (recentEntries.length > 0) {
+          const streak = calculateStreak(recentEntries);
+          const lastDate = recentEntries[0].date;
+          setStats({
+            streak,
+            lastEntry: lastDate === new Date().toISOString().split('T')[0] ? "Today" : lastDate
+          });
+        }
       } catch (err) {
-        console.error("Load entry error:", err);
+        console.error("Load data error:", err);
       } finally {
         setInitialLoading(false);
       }
     };
-    fetchToday();
+    fetchData();
   }, [user]);
+
+  const calculateStreak = (entries: any[]) => {
+    if (!entries.length) return 0;
+    let streak = 0;
+    const today = new Date().toISOString().split('T')[0];
+    const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date));
+    let current = today;
+    const hasToday = sorted.some(e => e.date === today);
+    if (!hasToday) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      current = yesterday.toISOString().split('T')[0];
+    }
+    for (const entry of sorted) {
+      if (entry.date === current) {
+        streak++;
+        const prev = new Date(current);
+        prev.setDate(prev.getDate() - 1);
+        current = prev.toISOString().split('T')[0];
+      } else if (entry.date < current) break;
+    }
+    return streak;
+  };
 
   // Add user message to conversation
   const addUserMessage = (content: string) => {
@@ -116,20 +155,37 @@ export default function JournalPage() {
     }
   };
 
-  const handleAnswerQuestion = (answer: string) => {
-    if (!user || !aiQuestions[currentQuestion]) return;
+  const handleAnswerQuestion = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!user || !aiQuestions[currentQuestion] || !followUpAnswer) return;
     
-    addUserMessage(`Answer: ${answer}`);
+    const answer = followUpAnswer;
+    const question = aiQuestions[currentQuestion];
+    
+    addUserMessage(answer);
+    setFollowUpAnswer("");
+    
+    const updatedHistory = [...followUpHistory, { question, answer }];
+    setFollowUpHistory(updatedHistory);
     
     // Move to next question or finish
     if (currentQuestion < aiQuestions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
       addAIMessage(aiQuestions[currentQuestion + 1]);
     } else {
-      // Process with answers
-      addAIMessage("Thanks for the clarification! Updating my analysis...");
-      setAiQuestions([]);
-      // Here you would re-process with the answers
+      // Process with all answers
+      setLoading(true);
+      try {
+        addAIMessage("Thanks for the clarification! Updating my analysis with these new details...");
+        const refinedData = await processJournalEntry(text, updatedHistory);
+        setResult(refinedData);
+        addAIMessage(refinedData.comment);
+        setAiQuestions([]);
+      } catch (err: any) {
+        setError("Error refining analysis.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -272,32 +328,40 @@ export default function JournalPage() {
                       )}
                     </div>
 
-                    {/* AI Questions */}
+                    {/* AI Question Form */}
                     {aiQuestions.length > 0 && (
                       <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="mt-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl"
+                        className="mt-6 p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl"
                       >
-                        <div className="flex items-center gap-2 mb-3">
-                          <HelpCircle size={16} className="text-emerald-400" />
-                          <span className="text-sm font-bold text-emerald-400">Question {currentQuestion + 1} of {aiQuestions.length}</span>
+                        <div className="flex items-center gap-2 mb-4">
+                          <HelpCircle size={18} className="text-emerald-400" />
+                          <span className="text-sm font-bold text-emerald-400 uppercase tracking-widest">
+                            Refinement Needed • {currentQuestion + 1}/{aiQuestions.length}
+                          </span>
                         </div>
-                        <p className="text-white font-medium mb-4">{aiQuestions[currentQuestion]}</p>
-                        <div className="grid grid-cols-2 gap-2">
+                        <p className="text-white text-lg font-medium mb-6 leading-relaxed">
+                          {aiQuestions[currentQuestion]}
+                        </p>
+                        <form onSubmit={handleAnswerQuestion} className="flex gap-3">
+                          <input
+                            required
+                            type="text"
+                            autoFocus
+                            className="flex-1 bg-zinc-900/50 border border-emerald-500/30 rounded-xl px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-all font-medium"
+                            placeholder="Type your answer here..."
+                            value={followUpAnswer}
+                            onChange={(e) => setFollowUpAnswer(e.target.value)}
+                          />
                           <button
-                            onClick={() => handleAnswerQuestion("Yes")}
-                            className="px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-emerald-400 font-medium hover:bg-emerald-500/30 transition-colors"
+                            type="submit"
+                            disabled={loading || !followUpAnswer}
+                            className="px-6 py-3 bg-emerald-500 text-zinc-950 font-black rounded-xl hover:bg-emerald-400 transition-all disabled:opacity-50 flex items-center gap-2"
                           >
-                            Yes
+                            SEND <Send size={16} />
                           </button>
-                          <button
-                            onClick={() => handleAnswerQuestion("No")}
-                            className="px-4 py-2 bg-zinc-800/50 border border-zinc-700/50 rounded-xl text-zinc-400 font-medium hover:bg-zinc-800 transition-colors"
-                          >
-                            No
-                          </button>
-                        </div>
+                        </form>
                       </motion.div>
                     )}
                   </motion.div>
@@ -314,7 +378,8 @@ export default function JournalPage() {
                       <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-50 transition duration-1000"></div>
                       <textarea
                         required
-                        className="w-full h-[180px] bg-zinc-900/50 backdrop-blur-xl border border-zinc-800/50 rounded-2xl p-6 text-lg font-medium text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 transition-all resize-none shadow-2xl relative z-10"
+                        disabled={aiQuestions.length > 0}
+                        className="w-full h-[180px] bg-zinc-900/50 backdrop-blur-xl border border-zinc-800/50 rounded-2xl p-6 text-lg font-medium text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 transition-all resize-none shadow-2xl relative z-10 disabled:opacity-50"
                         placeholder="Today I biked to work, avoided plastic packaging at lunch, and used cold water for laundry..."
                         value={text}
                         onChange={(e) => setText(e.target.value)}
@@ -324,7 +389,7 @@ export default function JournalPage() {
                     <div className="flex gap-4">
                       <button
                         type="submit"
-                        disabled={loading || !text}
+                        disabled={loading || !text || aiQuestions.length > 0}
                         className="flex-1 py-5 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-2xl font-bold text-white uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-emerald-600/20 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:grayscale"
                       >
                         {loading ? (
@@ -339,7 +404,11 @@ export default function JournalPage() {
                       
                       <button
                         type="button"
-                        onClick={() => setText("")}
+                        onClick={() => {
+                          setText("");
+                          setAiQuestions([]);
+                          setResult(null);
+                        }}
                         disabled={!text}
                         className="px-6 py-5 bg-zinc-900/50 border border-zinc-800/50 rounded-2xl font-medium text-zinc-400 hover:text-white transition-colors disabled:opacity-30"
                       >
@@ -462,14 +531,14 @@ export default function JournalPage() {
                           <TrendingUp size={16} className="text-zinc-500" />
                           <span className="text-sm text-zinc-300">Streak</span>
                         </div>
-                        <span className="text-orange-400 font-bold">7 days</span>
+                        <span className="text-orange-400 font-bold">{stats.streak} days</span>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-zinc-800/30 rounded-xl">
                         <div className="flex items-center gap-3">
                           <Clock size={16} className="text-zinc-500" />
                           <span className="text-sm text-zinc-300">Last Entry</span>
                         </div>
-                        <span className="text-blue-400 font-bold">Today</span>
+                        <span className="text-blue-400 font-bold">{stats.lastEntry}</span>
                       </div>
                     </div>
                   </motion.div>

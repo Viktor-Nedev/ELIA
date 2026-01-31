@@ -165,6 +165,15 @@ export default function ProfilePage() {
     }
   };
 
+  const currentRank = useMemo(() => {
+    const points = profile?.totalPoints || 0;
+    if (points >= 5000) return "Master Operative";
+    if (points >= 3000) return "Elite Operative";
+    if (points >= 1500) return "Specialist";
+    if (points >= 500) return "Active Operative";
+    return "Recruit";
+  }, [profile?.totalPoints]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050505] p-12 space-y-12">
@@ -231,7 +240,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="flex flex-wrap gap-4 w-full">
-                 <StatDisplay label="Rank" value="Master Operative" color="text-emerald-400" />
+                 <StatDisplay label="Rank" value={currentRank} color="text-emerald-400" />
                  <StatDisplay label="Points" value={profile?.totalPoints?.toLocaleString() || "0"} color="text-blue-400" />
                  <StatDisplay label="Connections" value={profile?.friends?.length?.toString() || "0"} color="text-zinc-400" />
               </div>
@@ -358,7 +367,7 @@ export default function ProfilePage() {
                   <ConfigItem 
                     icon={<Shield className="w-5 h-5 text-zinc-500" />} 
                     title="Firewall Level" 
-                    desc="Identity protection grade (Elite)."
+                    desc={`Identity protection grade (${currentRank === 'Master Operative' ? 'Elite' : 'Standard'}).`}
                   />
                </div>
                

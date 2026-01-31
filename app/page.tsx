@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { sustainabilityService } from "@/lib/sustainability.service";
-import { DailyEntry, UserProfile, Challenge } from "@/lib/types";
+import { DailyEntry, UserProfile, Challenge, EnvironmentalImpact } from "@/lib/types";
 import Link from "next/link";
 import { 
   Leaf, Trophy, Target, History, User, PlusCircle, 
@@ -42,24 +42,28 @@ export default function DashboardPage() {
   const [showYesterdayReminder, setShowYesterdayReminder] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // Chart data
-  const weeklyData = [
-    { day: 'Mon', co2: 3.2, water: 120, energy: 15 },
-    { day: 'Tue', co2: 2.8, water: 95, energy: 12 },
-    { day: 'Wed', co2: 2.5, water: 80, energy: 10 },
-    { day: 'Thu', co2: 3.0, water: 110, energy: 14 },
-    { day: 'Fri', co2: 2.2, water: 70, energy: 9 },
-    { day: 'Sat', co2: 1.8, water: 60, energy: 7 },
-    { day: 'Sun', co2: 1.5, water: 50, energy: 6 },
-  ];
+  const [weeklyData, setWeeklyData] = useState<any[]>([]);
+  const [emissionDistribution, setEmissionDistribution] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    streak: 0,
+    weeklyReduction: 0,
+    weeklyWater: 0,
+    rankPercentile: 0
+  });
 
-  const emissionDistribution = [
-    { name: 'Transport', value: 35, color: '#f59e0b' },
-    { name: 'Food', value: 25, color: '#10b981' },
-    { name: 'Energy', value: 20, color: '#3b82f6' },
-    { name: 'Water', value: 15, color: '#06b6d4' },
-    { name: 'Waste', value: 5, color: '#6b7280' },
-  ];
+  const [aiRecommendation, setAiRecommendation] = useState({
+    co2: 0,
+    water: 0,
+    message: "Loading recommendations..."
+  });
+
+  const [dailyChanges, setDailyChanges] = useState({
+    co2: 0,
+    water: 0,
+    energy: 0,
+    waste: 0,
+    food: 0
+  });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -80,20 +84,151 @@ export default function DashboardPage() {
         email: user.email || ""
       });
       
-      const [p, t, c] = await Promise.all([
+      const [p, t, c, entries, leaderboard, habits] = await Promise.all([
         sustainabilityService.getUserProfile(user.uid),
         sustainabilityService.getEntryForToday(user.uid),
-        sustainabilityService.getActiveChallenges(user.uid)
+        sustainabilityService.getActiveChallenges(user.uid),
+        sustainabilityService.getRecentEntries(user.uid, 7),
+        sustainabilityService.getGlobalLeaderboard(100),
+        sustainabilityService.getSuggestedHabits(user.uid)
       ]);
       
-      setProfile(p);
+      if (p) {
+        setProfile(p);
+        
+        // Calculate Rank Percentile
+        const userRankIndex = leaderboard.findIndex(u => u.id === user.uid);
+        const percentile = userRankIndex !== -1 
+          ? Math.max(1, Math.round(((userRankIndex + 1) / leaderboard.length) * 100))
+          : 100;
+        
+        // Calculate Streak (Self-contained logic for now)
+        const streak = calculateStreak(entries);
+        
+        // Calculate Weekly Totals
+        const weeklyReduction = entries.reduce((acc, curr) => acc + (curr.emissions.co2 || 0), 0);
+        const weeklyWater = entries.reduce((acc, curr) => acc + (curr.emissions.water || 0), 0);
+
+        setStats({
+          streak,
+          weeklyReduction,
+          weeklyWater,
+          rankPercentile: percentile
+        });
+
+        // Set AI Recommendation
+        if (habits && habits.length > 0) {
+          const topHabit = habits[0] as any;
+          setAiRecommendation({
+            co2: topHabit.estimatedSavings?.co2 || 2.5,
+            water: topHabit.estimatedSavings?.water || 50,
+            message: topHabit.description
+          });
+        }
+      }
+
       setTodayEntry(t);
       setChallenges(c);
+
+      // Format Weekly Data for Chart
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const formattedWeekly = entries.reverse().map(entry => {
+        const date = new Date(entry.date);
+        return {
+          day: days[date.getDay()],
+          co2: entry.emissions.co2,
+          water: entry.emissions.water,
+          energy: entry.emissions.energy || 0
+        };
+      });
+      setWeeklyData(formattedWeekly);
+
+      // Calculate Emission Distribution
+      const dist = calculateDistribution(entries);
+      setEmissionDistribution(dist);
+
+      // Calculate Daily Changes (compared to weekly average)
+      if (t && entries.length > 1) {
+        const avg = (key: keyof EnvironmentalImpact) => 
+          entries.reduce((acc, curr) => acc + (curr.emissions[key as keyof typeof curr.emissions] || 0), 0) / entries.length;
+        
+        const calcChange = (current: number, average: number) => {
+          if (average === 0) return 0;
+          return Math.round(((current - average) / average) * 100);
+        };
+
+        setDailyChanges({
+          co2: calcChange(t.emissions.co2, avg('co2')),
+          water: calcChange(t.emissions.water, avg('water')),
+          energy: calcChange(t.emissions.energy || 0, avg('energy')),
+          waste: calcChange(t.emissions.waste || 0, avg('waste')),
+          food: calcChange(t.emissions.food || 0, avg('food'))
+        });
+      }
+
     } catch (err) {
       console.error("Dashboard Load Error:", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateStreak = (entries: DailyEntry[]) => {
+    if (!entries.length) return 0;
+    
+    let streak = 0;
+    const today = new Date().toISOString().split('T')[0];
+    const sortedEntries = [...entries].sort((a, b) => b.date.localeCompare(a.date));
+    
+    let currentDate = today;
+    
+    // If no entry today, check if there was one yesterday to continue the streak
+    const hasEntryToday = sortedEntries.some(e => e.date === today);
+    if (!hasEntryToday) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      currentDate = yesterday.toISOString().split('T')[0];
+    }
+
+    for (const entry of sortedEntries) {
+      if (entry.date === currentDate) {
+        streak++;
+        const prevDate = new Date(currentDate);
+        prevDate.setDate(prevDate.getDate() - 1);
+        currentDate = prevDate.toISOString().split('T')[0];
+      } else if (entry.date < currentDate) {
+        break;
+      }
+    }
+    return streak;
+  };
+
+  const calculateDistribution = (entries: DailyEntry[]) => {
+    const totals = { co2: 0, water: 0, food: 0, energy: 0, waste: 0 };
+    entries.forEach(e => {
+      totals.co2 += e.emissions.co2 || 0;
+      totals.water += e.emissions.water || 0;
+      totals.food += e.emissions.food || 0;
+      totals.energy += e.emissions.energy || 0;
+      totals.waste += e.emissions.waste || 0;
+    });
+
+    const sum = Object.values(totals).reduce((a, b) => a + b, 0);
+    if (sum === 0) return [
+      { name: 'Transport', value: 0, color: '#f59e0b' },
+      { name: 'Food', value: 0, color: '#10b981' },
+      { name: 'Energy', value: 0, color: '#3b82f6' },
+      { name: 'Water', value: 0, color: '#06b6d4' },
+      { name: 'Waste', value: 0, color: '#6b7280' },
+    ];
+
+    return [
+      { name: 'Transport', value: Math.round((totals.co2 / sum) * 100), color: '#f59e0b' },
+      { name: 'Food', value: Math.round((totals.food / sum) * 100), color: '#10b981' },
+      { name: 'Energy', value: Math.round((totals.energy / sum) * 100), color: '#3b82f6' },
+      { name: 'Water', value: Math.round((totals.water / sum) * 100), color: '#06b6d4' },
+      { name: 'Waste', value: Math.round((totals.waste / sum) * 100), color: '#6b7280' },
+    ];
   };
 
   const handleChallengeComplete = async (challengeId: string) => {
@@ -112,11 +247,7 @@ export default function DashboardPage() {
 
   if (!user || !profile) return null;
 
-  const aiRecommendation = {
-    co2: 2.3,
-    water: 58,
-    message: "Take shorter showers and use public transport today!"
-  };
+  const aiRecommendationDisplay = aiRecommendation;
 
   return (
     <div className="min-h-screen bg-[#050505] text-zinc-100">
@@ -161,14 +292,6 @@ export default function DashboardPage() {
                   </motion.p>
                 </div>
                 <div className="hidden lg:block w-[1px] h-10 bg-gradient-to-b from-transparent via-zinc-700 to-transparent"></div>
-                
-                <div className="flex items-center gap-3">
-                  <Bell size={20} className="text-zinc-400" />
-                  <div className="relative">
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                  </div>
-                </div>
                 
                 <Link href="/profile" className="group relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full opacity-0 group-hover:opacity-100 blur transition-opacity duration-300"></div>
@@ -270,35 +393,35 @@ export default function DashboardPage() {
                         label="CO₂ Saved" 
                         value={`${todayEntry.emissions.co2}kg`} 
                         color="from-orange-500 to-red-500" 
-                        change="+12%" 
+                        change={dailyChanges.co2 >= 0 ? `+${dailyChanges.co2}%` : `${dailyChanges.co2}%`} 
                       />
                       <ImpactStat 
                         icon={<Droplet size={16} />} 
                         label="Water Saved" 
                         value={`${todayEntry.emissions.water}L`} 
                         color="from-blue-400 to-cyan-500" 
-                        change="+8%" 
+                        change={dailyChanges.water >= 0 ? `+${dailyChanges.water}%` : `${dailyChanges.water}%`} 
                       />
                       <ImpactStat 
                         icon={<Zap size={16} />} 
                         label="Energy Saved" 
-                        value={`${todayEntry.emissions.energy}kWh`} 
+                        value={`${todayEntry.emissions.energy || 0}kWh`} 
                         color="from-yellow-500 to-amber-500" 
-                        change="+15%" 
+                        change={dailyChanges.energy >= 0 ? `+${dailyChanges.energy}%` : `${dailyChanges.energy}%`} 
                       />
                       <ImpactStat 
                         icon={<Recycle size={16} />} 
                         label="Waste Reduced" 
-                        value={`${todayEntry.emissions.waste}kg`} 
+                        value={`${todayEntry.emissions.waste || 0}kg`} 
                         color="from-emerald-500 to-green-500" 
-                        change="+20%" 
+                        change={dailyChanges.waste >= 0 ? `+${dailyChanges.waste}%` : `${dailyChanges.waste}%`} 
                       />
                       <ImpactStat 
                         icon={<TreePine size={16} />} 
                         label="Food Impact" 
                         value={`${todayEntry.emissions.food}/10`} 
                         color="from-purple-500 to-pink-500" 
-                        change="+5%" 
+                        change={dailyChanges.food >= 0 ? `+${dailyChanges.food}%` : `${dailyChanges.food}%`} 
                       />
                     </div>
                   </div>
@@ -324,10 +447,10 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <p className="text-lg text-emerald-300 mb-4 italic">
-                        &quot;Today you can save <span className="font-bold">{aiRecommendation.co2}kg CO₂</span> and{" "}
-                        <span className="font-bold">{aiRecommendation.water}L water</span> by:&quot;
+                        &quot;Today you can save <span className="font-bold">{aiRecommendationDisplay.co2}kg CO₂</span> and{" "}
+                        <span className="font-bold">{aiRecommendationDisplay.water}L water</span> by:&quot;
                       </p>
-                      <p className="text-zinc-300">{aiRecommendation.message}</p>
+                      <p className="text-zinc-300">{aiRecommendationDisplay.message}</p>
                     </div>
                     
                     <Link href="/journal">
@@ -450,31 +573,31 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   <StatItem 
                     label="Current Streak" 
-                    value="7 days" 
+                    value={`${stats.streak} days`} 
                     icon="" 
                     color="text-orange-400"
-                    progress={70}
+                    progress={Math.min(100, (stats.streak / 30) * 100)}
                   />
                   <StatItem 
                     label="Weekly Reduction" 
-                    value="15.2 kg CO₂" 
+                    value={`${stats.weeklyReduction.toFixed(1)} kg CO₂`} 
                     icon="" 
                     color="text-emerald-400"
-                    progress={85}
+                    progress={Math.min(100, (stats.weeklyReduction / 50) * 100)}
                   />
                   <StatItem 
                     label="Water Saved" 
-                    value="320 L" 
+                    value={`${stats.weeklyWater.toFixed(0)} L`} 
                     icon="" 
                     color="text-blue-400"
-                    progress={60}
+                    progress={Math.min(100, (stats.weeklyWater / 1000) * 100)}
                   />
                   <StatItem 
                     label="Rank Percentile" 
-                    value="Top 15%" 
+                    value={`Top ${stats.rankPercentile}%`} 
                     icon="" 
                     color="text-yellow-400"
-                    progress={85}
+                    progress={100 - stats.rankPercentile}
                   />
                 </div>
               </motion.div>

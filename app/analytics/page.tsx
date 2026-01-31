@@ -93,19 +93,20 @@ export default function AnalyticsPage() {
 
   // Calculate averages
   const averages = {
-    co2: entries.reduce((sum, e) => sum + e.emissions.co2, 0) / entries.length || 0,
-    water: entries.reduce((sum, e) => sum + e.emissions.water, 0) / entries.length || 0,
-    energy: entries.reduce((sum, e) => sum + e.emissions.energy, 0) / entries.length || 0,
-    waste: entries.reduce((sum, e) => sum + e.emissions.waste, 0) / entries.length || 0,
-    food: entries.reduce((sum, e) => sum + e.emissions.food, 0) / entries.length || 0,
-    points: entries.reduce((sum, e) => sum + e.points, 0) / entries.length || 0,
+    co2: entries.reduce((sum, e) => sum + (e.emissions?.co2 || 0), 0) / entries.length || 0,
+    water: entries.reduce((sum, e) => sum + (e.emissions?.water || 0), 0) / entries.length || 0,
+    energy: entries.reduce((sum, e) => sum + (e.emissions?.energy || 0), 0) / entries.length || 0,
+    waste: entries.reduce((sum, e) => sum + (e.emissions?.waste || 0), 0) / entries.length || 0,
+    food: entries.reduce((sum, e) => sum + (e.emissions?.food || 0), 0) / entries.length || 0,
+    points: entries.reduce((sum, e) => sum + (e.points || 0), 0) / entries.length || 0,
   };
 
   // Calculate trends
   const calculateTrend = (metric: keyof DailyEntry["emissions"]) => {
     if (entries.length < 2) return 0;
-    const first = entries[0].emissions[metric];
-    const last = entries[entries.length - 1].emissions[metric];
+    const first = entries[0].emissions?.[metric] || 0;
+    const last = entries[entries.length - 1].emissions?.[metric] || 0;
+    if (first === 0) return 0;
     return ((last - first) / first) * 100;
   };
 
@@ -114,6 +115,33 @@ export default function AnalyticsPage() {
     if (trend < -5) return <ChevronDown className="w-4 h-4 text-red-400" />;
     return <Activity className="w-4 h-4 text-zinc-400" />;
   };
+
+  const calculateStreak = (entries: any[]) => {
+    if (!entries.length) return 0;
+    let streak = 0;
+    const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date));
+    const today = new Date().toISOString().split('T')[0];
+    let current = today;
+    const hasToday = sorted.some(e => e.date === today);
+    if (!hasToday) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      current = yesterday.toISOString().split('T')[0];
+    }
+    for (const entry of sorted) {
+      if (entry.date === current) {
+        streak++;
+        const prev = new Date(current);
+        prev.setDate(prev.getDate() - 1);
+        current = prev.toISOString().split('T')[0];
+      } else if (entry.date < current) break;
+    }
+    return streak;
+  };
+
+  const streak = calculateStreak(entries);
+  const improvement = calculateTrend(filter);
+  const consistency = entries.length > 10 ? "High" : entries.length > 5 ? "Medium" : "Developing";
 
   if (loading) {
     return (
@@ -475,15 +503,17 @@ export default function AnalyticsPage() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-zinc-400">Consistency</span>
-                        <span className="text-sm font-bold text-emerald-400">High</span>
+                        <span className="text-sm font-bold text-emerald-400">{consistency}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-zinc-400">Improvement</span>
-                        <span className="text-sm font-bold text-emerald-400">+18%</span>
+                        <span className="text-sm text-zinc-400">Trend ({filter.toUpperCase()})</span>
+                        <span className={`text-sm font-bold ${improvement > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {improvement > 0 ? '+' : ''}{improvement.toFixed(1)}%
+                        </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-zinc-400">Streak</span>
-                        <span className="text-sm font-bold text-orange-400">7 days</span>
+                        <span className="text-sm font-bold text-orange-400">{streak} days</span>
                       </div>
                     </div>
                   </motion.div>

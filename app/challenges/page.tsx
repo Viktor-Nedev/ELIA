@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
 import { sustainabilityService } from "@/lib/sustainability.service";
-import { Challenge } from "@/lib/types";
+import { Challenge, UserProfile } from "@/lib/types";
 import { 
   ArrowLeft, Target, CheckCircle2, Trophy, Clock, Sparkles, Plus, RefreshCw, 
   TrendingUp, Crown, Star, Zap, Flame, Droplet, Recycle, Utensils,
@@ -28,13 +28,10 @@ export default function ChallengesPage() {
   const [leaderboardType, setLeaderboardType] = useState<'weekly' | 'monthly'>('weekly');
   const [completedChallenges, setCompletedChallenges] = useState<number>(0);
 
-  const leaderboardData = [
-    { rank: 1, name: "Eco Warrior", points: 2450, avatar: "🌱", change: "▲" },
-    { rank: 2, name: "Green Giant", points: 1980, avatar: "🌍", change: "▲" },
-    { rank: 3, name: "Sustainability Pro", points: 1760, avatar: "♻️", change: "▼" },
-    { rank: 4, name: "Climate Champion", points: 1520, avatar: "⚡", change: "▲" },
-    { rank: 5, name: "You", points: 1340, avatar: "⭐", change: "▲" },
-  ];
+  const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [rankPercentile, setRankPercentile] = useState<string>("Top 50%");
+  const [streak, setStreak] = useState<number>(0);
 
   const impactIcons: Record<string, any> = {
     co2: <Flame size={14} className="text-orange-500" />,
@@ -49,6 +46,9 @@ export default function ChallengesPage() {
       loadChallenges();
       fetchHabits();
       loadCompletedCount();
+      loadLeaderboard();
+      loadUserProfile();
+      loadStreak();
     }
   }, [user]);
 
@@ -92,12 +92,78 @@ export default function ChallengesPage() {
   const loadCompletedCount = async () => {
     if (!user) return;
     try {
-      // This would be from your service
-      // For now, we'll use a mock number
-      setCompletedChallenges(12);
+      const completed = await sustainabilityService.getCompletedChallenges(user.uid);
+      setCompletedChallenges(completed.length);
     } catch (err) {
       console.error("Load completed count error:", err);
     }
+  };
+
+  const loadLeaderboard = async () => {
+    try {
+      const topUsers = await sustainabilityService.getGlobalLeaderboard(5);
+      const mapped = topUsers.map((u, i) => ({
+        rank: i + 1,
+        name: u.displayName || "Anonymous",
+        points: u.totalPoints || 0,
+        avatar: u.id === user?.uid ? "⭐" : ["🌱", "🌍", "♻️", "⚡"][i % 4] || "👤",
+        change: "▲",
+        id: u.id
+      }));
+      setLeaderboardData(mapped);
+    } catch (err) {
+      console.error("Leaderboard Load Error:", err);
+    }
+  };
+
+  const loadUserProfile = async () => {
+    if (!user) return;
+    try {
+      const profile = await sustainabilityService.getUserProfile(user.uid);
+      setUserProfile(profile);
+      
+      // Calculate Percentile
+      const allUsers = await sustainabilityService.getGlobalLeaderboard(100);
+      const myPoints = profile?.totalPoints || 0;
+      const countBetter = allUsers.filter(u => (u.totalPoints || 0) > myPoints).length;
+      const percentile = Math.max(1, Math.round((countBetter / allUsers.length) * 100));
+      setRankPercentile(`Top ${percentile}%`);
+    } catch (err) {
+      console.error("Profile Load Error:", err);
+    }
+  };
+
+  const loadStreak = async () => {
+    if (!user) return;
+    try {
+      const entries = await sustainabilityService.getRecentEntries(user.uid, 14);
+      setStreak(calculateStreak(entries));
+    } catch (err) {
+      console.error("Streak Load Error:", err);
+    }
+  };
+
+  const calculateStreak = (entries: any[]) => {
+    if (!entries.length) return 0;
+    let streak = 0;
+    const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date));
+    const today = new Date().toISOString().split('T')[0];
+    let current = today;
+    const hasToday = sorted.some(e => e.date === today);
+    if (!hasToday) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      current = yesterday.toISOString().split('T')[0];
+    }
+    for (const entry of sorted) {
+      if (entry.date === current) {
+        streak++;
+        const prev = new Date(current);
+        prev.setDate(prev.getDate() - 1);
+        current = prev.toISOString().split('T')[0];
+      } else if (entry.date < current) break;
+    }
+    return streak;
   };
 
   const handleComplete = async (c: Challenge) => {
@@ -203,13 +269,13 @@ export default function ChallengesPage() {
                     <StatCard 
                       icon={<TrendingUpIcon size={20} />}
                       label="Total Points"
-                      value="1,340"
+                      value={(userProfile?.totalPoints || 0).toLocaleString()}
                       color="text-blue-400"
                     />
                     <StatCard 
-                      icon={<RankIcon rank={5} />}
+                      icon={<RankIcon rank={leaderboardData.findIndex(p => p.id === user?.uid) + 1 || 0} />}
                       label="Global Rank"
-                      value="Top 15%"
+                      value={rankPercentile}
                       color="text-purple-400"
                     />
                   </div>
@@ -410,9 +476,9 @@ export default function ChallengesPage() {
                   <div className="space-y-3">
                     {leaderboardData.map((player, idx) => (
                       <div 
-                        key={player.rank} 
+                        key={player.id || player.rank} 
                         className={`flex items-center justify-between p-3 rounded-xl transition-all ${
-                          player.name === "You" 
+                          player.id === user?.uid 
                             ? 'bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/20' 
                             : 'bg-zinc-800/30 hover:bg-zinc-800/50'
                         }`}
@@ -486,8 +552,8 @@ export default function ChallengesPage() {
                       <span className="text-lg font-bold text-blue-400">42</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-zinc-300">Best Streak</span>
-                      <span className="text-lg font-bold text-orange-400">14 days</span>
+                      <span className="text-sm text-zinc-300">Current Streak</span>
+                      <span className="text-lg font-bold text-orange-400">{streak} days</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-zinc-300">Next Milestone</span>

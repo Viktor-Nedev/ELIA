@@ -116,6 +116,16 @@ export const sustainabilityService = {
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as Challenge));
   },
 
+  async getCompletedChallenges(userId: string) {
+    const q = query(
+      collection(db, CHALLENGES_COL),
+      where("userId", "==", userId),
+      where("completed", "==", true)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Challenge));
+  },
+
   async completeChallenge(challengeId: string, userId: string, points: number) {
     const batch = writeBatch(db);
     const challengeRef = doc(db, CHALLENGES_COL, challengeId);
