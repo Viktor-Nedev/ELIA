@@ -101,7 +101,7 @@ export default function ChallengesPage() {
 
   const loadLeaderboard = async () => {
     try {
-      const topUsers = await sustainabilityService.getGlobalLeaderboard(5);
+      const topUsers = await sustainabilityService.getLeaderboard('global', user?.uid);
       const mapped = topUsers.map((u, i) => ({
         rank: i + 1,
         name: u.displayName || "Anonymous",
@@ -123,7 +123,7 @@ export default function ChallengesPage() {
       setUserProfile(profile);
       
       // Calculate Percentile
-      const allUsers = await sustainabilityService.getGlobalLeaderboard(100);
+      const allUsers = await sustainabilityService.getLeaderboard('global', user?.uid);
       const myPoints = profile?.totalPoints || 0;
       const countBetter = allUsers.filter(u => (u.totalPoints || 0) > myPoints).length;
       const percentile = Math.max(1, Math.round((countBetter / allUsers.length) * 100));

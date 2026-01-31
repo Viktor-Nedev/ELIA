@@ -89,7 +89,7 @@ export default function DashboardPage() {
         sustainabilityService.getEntryForToday(user.uid),
         sustainabilityService.getActiveChallenges(user.uid),
         sustainabilityService.getRecentEntries(user.uid, 7),
-        sustainabilityService.getGlobalLeaderboard(100),
+        sustainabilityService.getLeaderboard('global'),
         sustainabilityService.getSuggestedHabits(user.uid)
       ]);
       

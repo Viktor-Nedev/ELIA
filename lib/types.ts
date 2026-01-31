@@ -64,6 +64,32 @@ export interface UserProfile {
   emailNotifications: boolean;
   isPrivate: boolean;
   suggestedHabits?: Habit[];
+  squadIds?: string[];
+}
+
+export interface Squad {
+  id?: string;
+  name: string;
+  description: string;
+  leaderId: string;
+  memberIds: string[];
+  isPrivate: boolean;
+  accessCode?: string;
+  totalPoints: number;
+  createdAt: any;
+}
+
+export interface CommunityPost {
+  id?: string;
+  userId: string;
+  userName: string;
+  userPhotoURL?: string;
+  content: string;
+  type: "entry" | "achievement" | "challenge";
+  impact?: EnvironmentalImpact;
+  likes: string[]; // User IDs
+  squadId?: string; // Optional: post to a specific squad
+  createdAt: any;
 }
 
 export interface FriendRequest {

@@ -13,16 +13,20 @@ import {
   Timestamp,
   serverTimestamp,
   writeBatch,
-  limit
+  limit,
+  arrayUnion
 } from "firebase/firestore";
-import { DailyEntry, Challenge, UserProfile, EnvironmentalImpact, FriendRequest, Habit, Achievement } from "./types";
+import { DailyEntry, Challenge, UserProfile, EnvironmentalImpact, FriendRequest, Habit, Achievement, Squad, CommunityPost } from "./types";
 import { mailService } from "./mail.service";
+
 
 // Collections
 const ENTRIES_COL = "dailyEntries";
 const CHALLENGES_COL = "challenges";
 const USERS_COL = "users";
 const REQUESTS_COL = "friendRequests";
+const SQUADS_COL = "squads";
+const POSTS_COL = "communityPosts";
 
 // Achievement Definitions
 export const ACHIEVEMENTS: Achievement[] = [
@@ -75,12 +79,33 @@ export const sustainabilityService = {
     // Update user points atomically
     const userRef = doc(db, USERS_COL, entry.userId);
     const userSnap = await getDoc(userRef);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const startOfWeek = new Date();
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+    const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
+
     if (userSnap.exists()) {
-      const currentPoints = userSnap.data().totalPoints || 0;
-      batch.update(userRef, { totalPoints: currentPoints + pointDiff });
+      const data = userSnap.data();
+      const currentPoints = data.totalPoints || 0;
+      let weeklyPoints = data.weeklyPoints || 0;
+      const lastReset = data.lastWeeklyReset || "";
+
+      if (lastReset < startOfWeekStr) {
+        weeklyPoints = pointDiff; // Start new week
+      } else {
+        weeklyPoints += pointDiff;
+      }
+
+      batch.update(userRef, { 
+        totalPoints: currentPoints + pointDiff,
+        weeklyPoints,
+        lastWeeklyReset: startOfWeekStr
+      });
     } else {
       batch.set(userRef, {
         totalPoints: entry.points,
+        weeklyPoints: entry.points,
+        lastWeeklyReset: startOfWeekStr,
         badges: [],
         friends: [],
         displayName: "",
@@ -164,7 +189,7 @@ export const sustainabilityService = {
   async getUserProfile(userId: string): Promise<UserProfile | null> {
     const docRef = doc(db, USERS_COL, userId);
     const snap = await getDoc(docRef);
-    return snap.exists() ? (snap.data() as UserProfile) : null;
+    return snap.exists() ? ({ id: snap.id, ...snap.data() } as UserProfile) : null;
   },
 
   async ensureUserProfile(userId: string, data: Partial<UserProfile>) {
@@ -188,37 +213,13 @@ export const sustainabilityService = {
     await updateDoc(docRef, data);
   },
 
+
   async updatePrivacySetting(userId: string, isPrivate: boolean) {
     const docRef = doc(db, USERS_COL, userId);
     await updateDoc(docRef, { isPrivate });
   },
 
   // Social
-  async searchUsers(searchTerm: string) {
-    // Basic search (case-sensitive start with) 
-    if (!searchTerm) return [];
-    const q = query(
-      collection(db, USERS_COL),
-      where("displayName", ">=", searchTerm),
-      where("displayName", "<=", searchTerm + "\uf8ff"),
-      where("isPrivate", "==", false),
-      limit(20)
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
-  },
-
-  async getGlobalLeaderboard(limitCount: number = 10) {
-    const q = query(
-      collection(db, USERS_COL),
-      where("isPrivate", "==", false),
-      orderBy("totalPoints", "desc"),
-      limit(limitCount)
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
-  },
-
   async sendFriendRequest(fromUser: UserProfile, toUserId: string) {
     const toUserSnap = await getDoc(doc(db, USERS_COL, toUserId));
     if (!toUserSnap.exists()) throw new Error("Target user not found");
@@ -252,34 +253,61 @@ export const sustainabilityService = {
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as FriendRequest));
   },
 
-  async handleFriendRequest(request: FriendRequest, action: "accepted" | "declined") {
+  // async handleFriendRequest(request: FriendRequest, action: "accepted" | "declined") {
+  //   const batch = writeBatch(db);
+  //   const requestRef = doc(db, REQUESTS_COL, request.id!);
+  //   batch.update(requestRef, { status: action });
+    
+  //   if (action === "accepted") {
+  //     const userRef = doc(db, USERS_COL, request.toId);
+  //     const friendRef = doc(db, USERS_COL, request.fromId);
+      
+  //     const userSnap = await getDoc(userRef);
+  //     const friendSnap = await getDoc(friendRef);
+      
+  //     if (userSnap.exists() && friendSnap.exists()) {
+  //       const userFriends = userSnap.data().friends || [];
+  //       const friendFriends = friendSnap.data().friends || [];
+        
+  //       batch.update(userRef, { friends: [...userFriends, request.fromId] });
+  //       batch.update(friendRef, { friends: [...friendFriends, request.toId] });
+        
+  //       // Notify
+  //       if (friendSnap.data().emailNotifications) {
+  //         await mailService.notifyFriendAccepted(friendSnap.data().email, userSnap.data().displayName);
+  //       }
+  //     }
+  //   }
+
+  //   await batch.commit();
+  // },
+
+
+  async handleFriendRequest(
+    request: FriendRequest,
+    action: "accepted" | "declined"
+  ) {
     const batch = writeBatch(db);
     const requestRef = doc(db, REQUESTS_COL, request.id!);
+  
     batch.update(requestRef, { status: action });
-
+  
     if (action === "accepted") {
       const userRef = doc(db, USERS_COL, request.toId);
       const friendRef = doc(db, USERS_COL, request.fromId);
-      
-      const userSnap = await getDoc(userRef);
-      const friendSnap = await getDoc(friendRef);
-      
-      if (userSnap.exists() && friendSnap.exists()) {
-        const userFriends = userSnap.data().friends || [];
-        const friendFriends = friendSnap.data().friends || [];
-        
-        batch.update(userRef, { friends: [...userFriends, request.fromId] });
-        batch.update(friendRef, { friends: [...friendFriends, request.toId] });
-        
-        // Notify
-        if (friendSnap.data().emailNotifications) {
-          await mailService.notifyFriendAccepted(friendSnap.data().email, userSnap.data().displayName);
-        }
-      }
+    
+      batch.update(userRef, {
+        friends: arrayUnion(request.fromId),
+      });
+    
+      batch.update(friendRef, {
+        friends: arrayUnion(request.toId),
+      });
     }
-
+  
     await batch.commit();
   },
+
 
   async getFriendsProgress(friendIds: string[]) {
     if (!friendIds || friendIds.length === 0) return [];
@@ -470,5 +498,234 @@ export const sustainabilityService = {
     }
 
     return newAchievements;
+  },
+
+  // Community & Social
+  async getLeaderboard(type: 'global' | 'weekly' | 'friends', currentUserId?: string) {
+    let q;
+    if (type === 'global') {
+      q = query(
+        collection(db, USERS_COL),
+        where("isPrivate", "==", false),
+        orderBy("totalPoints", "desc"),
+        limit(50)
+      );
+    } else if (type === 'weekly') {
+      q = query(
+        collection(db, USERS_COL),
+        where("isPrivate", "==", false),
+        orderBy("weeklyPoints", "desc"),
+        limit(50)
+      );
+    } else if (type === 'friends' && currentUserId) {
+      const profile = await this.getUserProfile(currentUserId);
+      const friendIds = [...(profile?.friends || []), currentUserId];
+      
+      // Firestore 'in' query limit is 10, so we might need multiple queries if friends > 10
+      // For MVP, we'll slice to 10 for simplicity or fetch all and sort in memory if needed
+      q = query(
+        collection(db, USERS_COL),
+        where("__name__", "in", friendIds.slice(0, 10)),
+        orderBy("totalPoints", "desc")
+      );
+    } else {
+      return [];
+    }
+
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
+  },
+
+  async searchUsers(searchQuery: string) {
+    const q = query(
+      collection(db, USERS_COL),
+      where("isPrivate", "==", false),
+      limit(20)
+    );
+    const snap = await getDocs(q);
+    const results = snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
+    
+    if (!searchQuery) return results;
+    
+    return results.filter(u => 
+      u.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      u.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  },
+
+  async createSquad(userId: string, data: { name: string, description: string, isPrivate: boolean }) {
+    try {
+    const accessCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const squadRef = doc(collection(db, SQUADS_COL));
+    
+    const squad: Squad = {
+      name: data.name,
+      description: data.description,
+      leaderId: userId,
+      memberIds: [userId],
+      isPrivate: data.isPrivate,
+      totalPoints: 0,
+      createdAt: serverTimestamp()
+    };
+
+    if (data.isPrivate) {
+      squad.accessCode = accessCode;
+    }
+    
+    const batch = writeBatch(db);
+    batch.set(squadRef, squad);
+    
+    // Add squadId to user
+    const userRef = doc(db, USERS_COL, userId);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const userData = userSnap.data() as UserProfile;
+      const squadIds = [...(userData.squadIds || []), squadRef.id!];
+      batch.update(userRef, { squadIds });
+    }
+    
+    await batch.commit();
+    return { id: squadRef.id, ...squad };
+    } catch (error) {
+      console.error("Error creating squad:", error);
+      throw error;
+    }
+  },
+
+  async joinSquad(userId: string, accessCode: string) {
+    const q = query(collection(db, SQUADS_COL), where("accessCode", "==", accessCode.toUpperCase()), limit(1));
+    const snap = await getDocs(q);
+    if (snap.empty) throw new Error("Invalid access code.");
+    
+    const squadDoc = snap.docs[0];
+    const squadData = squadDoc.data() as Squad;
+    
+    if (squadData.memberIds.includes(userId)) return { id: squadDoc.id, ...squadData };
+
+    const batch = writeBatch(db);
+    batch.update(squadDoc.ref, {
+      memberIds: [...squadData.memberIds, userId]
+    });
+
+    const userRef = doc(db, USERS_COL, userId);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const squadIds = [...(userSnap.data().squadIds || []), squadDoc.id];
+      batch.update(userRef, { squadIds });
+    }
+
+    await batch.commit();
+    return { id: squadDoc.id, ...squadData };
+  },
+
+  async getSquads(userId: string) {
+    const userRef = doc(db, USERS_COL, userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists() || !userSnap.data().squadIds?.length) return [];
+    
+    const squadIds = userSnap.data().squadIds as string[];
+    // Again, 'in' query limit is 10
+    const q = query(collection(db, SQUADS_COL), where("__name__", "in", squadIds.slice(0, 10)));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Squad));
+  },
+
+  async createPost(post: Omit<CommunityPost, "id" | "createdAt" | "likes">) {
+    const postRef = collection(db, POSTS_COL);
+    const newPost = {
+      ...post,
+      likes: [],
+      createdAt: serverTimestamp()
+    };
+    const docRef = await addDoc(postRef, newPost);
+    return { id: docRef.id, ...newPost };
+  },
+
+  async getCommunityFeed(squadId?: string) {
+    let q;
+    if (squadId) {
+      q = query(
+        collection(db, POSTS_COL), 
+        where("squadId", "==", squadId),
+        orderBy("createdAt", "desc"), 
+        limit(30)
+      );
+    } else {
+      q = query(collection(db, POSTS_COL), orderBy("createdAt", "desc"), limit(30));
+    }
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as CommunityPost));
+  },
+
+  async toggleLike(postId: string, userId: string) {
+    const postRef = doc(db, POSTS_COL, postId);
+    const postSnap = await getDoc(postRef);
+    if (!postSnap.exists()) return;
+    
+    const likes = (postSnap.data().likes || []) as string[];
+    const isLiked = likes.includes(userId);
+    
+    if (isLiked) {
+      await updateDoc(postRef, {
+        likes: likes.filter(id => id !== userId)
+      });
+    } else {
+      await updateDoc(postRef, {
+        likes: [...likes, userId]
+      });
+    }
+  },
+
+  async getTopSquads(queryLimit: number = 5) {
+    const q = query(
+      collection(db, SQUADS_COL),
+      where("isPrivate", "==", false),
+      orderBy("totalPoints", "desc"),
+      limit(queryLimit)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Squad));
+  },
+
+  async joinSquadById(userId: string, squadId: string) {
+    const docRef = doc(db, SQUADS_COL, squadId);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) throw new Error("Squad not found.");
+    
+    const squadData = snap.data() as Squad;
+    if (squadData.isPrivate) throw new Error("This squad is private. Use an access code.");
+    if (squadData.memberIds.includes(userId)) return { id: snap.id, ...squadData };
+
+    const batch = writeBatch(db);
+    batch.update(docRef, {
+      memberIds: [...squadData.memberIds, userId]
+    });
+
+    const userRef = doc(db, USERS_COL, userId);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const squadIds = [...(userSnap.data().squadIds || []), snap.id];
+      batch.update(userRef, { squadIds });
+    }
+
+    await batch.commit();
+    return { id: snap.id, ...squadData };
+  },
+
+  async searchSquads(searchQuery: string) {
+    const q = query(
+      collection(db, SQUADS_COL),
+      where("isPrivate", "==", false),
+      limit(20)
+    );
+    const snap = await getDocs(q);
+    const results = snap.docs.map(d => ({ id: d.id, ...d.data() } as Squad));
+    
+    if (!searchQuery) return results;
+    
+    return results.filter(s => 
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      s.description.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   }
 };

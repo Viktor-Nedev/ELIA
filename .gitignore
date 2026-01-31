@@ -42,6 +42,9 @@ next-env.d.ts
 
 # firebase
 firestore.rules
+firebase.json
+database.rules.json
+.firebaserc
 
 #history
 /.history

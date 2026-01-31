@@ -8,8 +8,7 @@ import { UserProfile, FriendRequest } from "@/lib/types";
 import { 
   ArrowLeft, User, Mail, Settings, Users, LogOut, 
   Shield, Bell, BellOff, Edit2, Search, Check, X,
-  ExternalLink, Trophy, Star, Ghost, Eye, EyeOff,
-  Activity, Zap, Droplets, Leaf
+  ExternalLink, Trophy,  Filter, Globe, Activity, Ghost, ShieldAlert, Star, Eye, EyeOff, Zap, Droplets, Leaf
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -94,7 +93,7 @@ export default function ProfilePage() {
 
   const loadGlobalData = async () => {
     try {
-      const leaderboard = await sustainabilityService.getGlobalLeaderboard(10);
+      const leaderboard = await sustainabilityService.getLeaderboard('global', user?.uid);
       setGlobalLeaderboard(leaderboard);
     } catch (err) {
       console.error("Leaderboard Error:", err);
@@ -178,12 +177,12 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-[#050505] p-12 space-y-12">
         <div className="max-w-[1000px] mx-auto space-y-12">
-           <Skeleton className="w-32 h-6" />
+           {/* <Skeleton className="w-32 h-6" />
            <Skeleton className="w-full h-80 rounded-[3rem]" />
            <div className="grid grid-cols-2 gap-8">
               <Skeleton className="h-96 rounded-[2.5rem]" />
               <Skeleton className="h-96 rounded-[2.5rem]" />
-           </div>
+           </div> */}
         </div>
       </div>
     );
@@ -298,21 +297,27 @@ export default function ProfilePage() {
 
                          <div className="space-y-3">
                             {searchResults.map(u => (
-                              <SearchItem key={u.id} user={u} onInvite={() => sustainabilityService.sendFriendRequest(profile!, u.id!)} />
+                              <SearchItem key={u.id} user={u} onInvite={() => profile && sustainabilityService.sendFriendRequest(profile, u.id!)} />
                             ))}
                             {searchQuery && searchResults.length === 0 && !socialLoading && <p className="text-center py-10 text-zinc-700 font-bold italic">No public operatives found.</p>}
                          </div>
                       </div>
                     ) : (
                       <div className="space-y-10">
-                         {pendingRequests.length > 0 && (
-                           <div className="space-y-4">
-                              <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest ml-4">Clearance Requests</p>
-                              {pendingRequests.map(r => (
-                                <RequestItem key={r.id} request={r} onAccept={() => handleRequest(r, "accepted")} onDecline={() => handleRequest(r, "declined")} />
-                              ))}
-                           </div>
-                         )}
+                          <div className="space-y-4">
+                             <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest ml-4 flex items-center gap-2">
+                               <ShieldAlert className="w-3 h-3" /> Clearance Requests
+                             </p>
+                             {pendingRequests.length > 0 ? (
+                               pendingRequests.map(r => (
+                                 <RequestItem key={r.id} request={r} onAccept={() => handleRequest(r, "accepted")} onDecline={() => handleRequest(r, "declined")} />
+                               ))
+                             ) : (
+                               <div className="p-8 text-center bg-zinc-950/30 border border-zinc-800/50 border-dashed rounded-3xl group hover:border-zinc-700/50 transition-all">
+                                 <p className="text-[9px] font-black text-zinc-700 uppercase tracking-widest italic">No pending uplink requests.</p>
+                               </div>
+                             )}
+                          </div>
 
                          <div className="space-y-4">
                            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-4">Leaderboard Sync</p>
