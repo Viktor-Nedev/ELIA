@@ -440,28 +440,34 @@ export default function StudyPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Game 1: Carbon Sort */}
-                      <div className="p-6 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-zinc-800 rounded-2xl hover:scale-[1.02] transition-transform cursor-pointer group"
-                           onClick={() => startGame("carbon-sort")}>
-                        <div className="flex items-center gap-4 mb-4">
-                          <div className="w-14 h-14 rounded-2xl bg-black/30 flex items-center justify-center">
-                            <Recycle className="w-8 h-8 text-emerald-500" />
-                          </div>
-                          <div>
-                            <h4 className="font-black text-white text-lg">Carbon Sort</h4>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs px-2 py-1 bg-zinc-900 rounded-md">Easy</span>
-                              <span className="text-xs text-zinc-600">50 pts/game</span>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-zinc-400 text-sm mb-4">Sort waste items into correct recycling bins. Learn proper waste management.</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-zinc-600">Best: 0 pts</span>
-                          <button className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-sm font-black uppercase hover:bg-emerald-500/20 transition-colors">
-                            Play Now
-                          </button>
-                        </div>
-                      </div>
+             <div className="p-6 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-zinc-800 rounded-2xl hover:scale-[1.02] transition-transform cursor-pointer group">
+                <div className="flex items-center gap-4 mb-4">
+                    <div className="w-14 h-14 rounded-2xl bg-black/30 flex items-center justify-center">
+                          <Recycle className="w-8 h-8 text-emerald-500" />
+    </div>
+    <div>
+      <h4 className="font-black text-white text-lg">Carbon Sort</h4>
+      <div className="flex items-center gap-2 mt-1">
+        <span className="text-xs px-2 py-1 bg-zinc-900 rounded-md">Easy</span>
+        <span className="text-xs text-zinc-600">50 pts/game</span>
+      </div>
+    </div>
+  </div>
+  <p className="text-zinc-400 text-sm mb-4">Sort waste items into correct recycling bins. Learn proper waste management.</p>
+  <div className="flex items-center justify-between">
+    <span className="text-xs text-zinc-600">Best: 0 pts</span>
+    <button 
+      onClick={() => window.location.href = "/carbon-sort"}
+      className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-sm font-black uppercase hover:bg-emerald-500/20 transition-colors"
+    >
+      Play Now
+    </button>
+  </div>
+</div>
+
+
+
+
 
                       {/* Game 2: Water Flow */}
                       <div className="p-6 bg-gradient-to-br from-blue-500/20 to-blue-500/5 border border-zinc-800 rounded-2xl hover:scale-[1.02] transition-transform cursor-pointer group"
