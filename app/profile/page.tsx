@@ -239,10 +239,13 @@ export default function ProfilePage() {
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-4 w-full">
+              <div className="grid grid-cols-2 md:flex md:flex-wrap gap-4 w-full">
                  <StatDisplay label="Rank" value={currentRank} color="text-emerald-400" />
                  <StatDisplay label="Points" value={profile?.totalPoints?.toLocaleString() || "0"} color="text-blue-400" />
                  <StatDisplay label="Connections" value={profile?.friends?.length?.toString() || "0"} color="text-zinc-400" />
+                 <Link href="/achievements" className="flex-1 min-w-[120px]">
+                    <StatDisplay label="Medals" value={(profile?.earnedAchievements?.length || 0).toString()} color="text-orange-400 hover:text-orange-300 transition-colors" />
+                 </Link>
               </div>
             </div>
           </div>

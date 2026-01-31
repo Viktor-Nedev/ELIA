@@ -15,7 +15,7 @@ import {
   writeBatch,
   limit
 } from "firebase/firestore";
-import { DailyEntry, Challenge, UserProfile, EnvironmentalImpact, FriendRequest, Habit } from "./types";
+import { DailyEntry, Challenge, UserProfile, EnvironmentalImpact, FriendRequest, Habit, Achievement } from "./types";
 import { mailService } from "./mail.service";
 
 // Collections
@@ -23,6 +23,18 @@ const ENTRIES_COL = "dailyEntries";
 const CHALLENGES_COL = "challenges";
 const USERS_COL = "users";
 const REQUESTS_COL = "friendRequests";
+
+// Achievement Definitions
+export const ACHIEVEMENTS: Achievement[] = [
+  { id: "first_entry", name: "Pioneer", description: "Logged your first sustainability report.", icon: "🚀", pointsBonus: 50 },
+  { id: "points_100", name: "Eco Starter", description: "Reached 100 total points.", icon: "🌱", pointsBonus: 100 },
+  { id: "points_500", name: "Eco Hero", description: "Reached 500 total points.", icon: "🦸", pointsBonus: 250 },
+  { id: "points_1000", name: "Eco Champion", description: "Reached 1,000 total points.", icon: "🏆", pointsBonus: 500 },
+  { id: "streak_7", name: "Weekly Warrior", description: "Maintained a 7-day streak.", icon: "🔥", pointsBonus: 200 },
+  { id: "water_1000", name: "Aquamist", description: "Saved over 1,000L of water.", icon: "💧", pointsBonus: 150 },
+  { id: "co2_50", name: "Carbon Killer", description: "Saved over 50kg of CO2.", icon: "📉", pointsBonus: 200 },
+  { id: "habit_master", name: "Habit Master", description: "Completed 10 challenges.", icon: "✨", pointsBonus: 300 },
+];
 
 export const sustainabilityService = {
   // Entries
@@ -79,7 +91,11 @@ export const sustainabilityService = {
     }
 
     await batch.commit();
-    return entryRef.id;
+    
+    // Check for achievements after entry
+    const newAchievements = await this.checkAndAwardAchievements(entry.userId);
+    
+    return { id: entryRef.id, newAchievements: newAchievements || [] };
   },
 
   async getRecentEntries(userId: string, limitCount = 14) {
@@ -139,6 +155,9 @@ export const sustainabilityService = {
     }
 
     await batch.commit();
+
+    // Check for achievements after challenge
+    await this.checkAndAwardAchievements(userId);
   },
 
   // Profile
@@ -340,5 +359,116 @@ export const sustainabilityService = {
 
     await batch.commit();
     return challengeRef.id;
+  },
+
+  async checkAndAwardAchievements(userId: string) {
+    const profile = await this.getUserProfile(userId);
+    if (!profile) return;
+
+    const entries = await this.getRecentEntries(userId, 100);
+    const earnedIds = new Set(profile.earnedAchievements || []);
+    const newAchievements: Achievement[] = [];
+
+    // Calculate Progress Metrics
+    const totalCO2 = entries.reduce((sum, e) => sum + (e.emissions.co2 || 0), 0);
+    const totalWater = entries.reduce((sum, e) => sum + (e.emissions.water || 0), 0);
+    const completedChallenges = await this.getCompletedChallenges(userId);
+    
+    const calculateStreak = (entries: DailyEntry[]) => {
+      if (!entries.length) return 0;
+      let streak = 0;
+      const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date));
+      const today = new Date().toISOString().split('T')[0];
+      let current = today;
+      const hasToday = sorted.some(e => e.date === today);
+      if (!hasToday) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        current = yesterday.toISOString().split('T')[0];
+      }
+      for (const entry of sorted) {
+        if (entry.date === current) {
+          streak++;
+          const prev = new Date(current);
+          prev.setDate(prev.getDate() - 1);
+          current = prev.toISOString().split('T')[0];
+        } else if (entry.date < current) break;
+      }
+      return streak;
+    };
+    const streak = calculateStreak(entries);
+
+    // Check Milestones
+    for (const ach of ACHIEVEMENTS) {
+      if (earnedIds.has(ach.id)) continue;
+
+      let earned = false;
+      switch (ach.id) {
+        case "first_entry": 
+          if (entries.length >= 1) earned = true; 
+          break;
+        case "points_100": 
+          if (profile.totalPoints >= 100) earned = true; 
+          break;
+        case "points_500": 
+          if (profile.totalPoints >= 500) earned = true; 
+          break;
+        case "points_1000": 
+          if (profile.totalPoints >= 1000) earned = true; 
+          break;
+        case "streak_7": 
+          if (streak >= 7) earned = true; 
+          break;
+        case "water_1000": 
+          if (totalWater >= 1000) earned = true; 
+          break;
+        case "co2_50": 
+          if (totalCO2 >= 50) earned = true; 
+          break;
+        case "habit_master": 
+          if (completedChallenges.length >= 10) earned = true; 
+          break;
+      }
+
+      if (earned) {
+        newAchievements.push(ach);
+      }
+    }
+
+    if (newAchievements.length === 0) return;
+
+    // Award Achievements
+    const batch = writeBatch(db);
+    const userRef = doc(db, USERS_COL, userId);
+    
+    const updatedEarned = [...(profile.earnedAchievements || []), ...newAchievements.map(a => a.id)];
+    const updatedBadges = [...(profile.badges || []), ...newAchievements.map(a => a.name)];
+    const bonusPoints = newAchievements.reduce((sum, a) => sum + a.pointsBonus, 0);
+
+    batch.update(userRef, {
+      earnedAchievements: updatedEarned,
+      badges: updatedBadges,
+      totalPoints: (profile.totalPoints || 0) + bonusPoints
+    });
+
+    await batch.commit();
+
+    // Notify Friends (parallelly)
+    if (profile.friends && profile.friends.length > 0) {
+      const friends = await this.getFriendsProgress(profile.friends);
+      const notifications = [];
+      
+      for (const ach of newAchievements) {
+        for (const friend of friends) {
+          if (friend.emailNotifications) {
+            notifications.push(mailService.notifyAchievementEarned(friend.email, profile.displayName, ach.name));
+          }
+        }
+      }
+      
+      await Promise.allSettled(notifications);
+    }
+
+    return newAchievements;
   }
 };

@@ -4,21 +4,34 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Home, PlusCircle, BarChart3, TargetIcon, Users, Award, 
-  Settings, LogOut, Leaf, Menu, X 
+  Home, PlusCircle, BarChart3, TargetIcon, Users, Award, LogOut, Leaf, Menu, X, 
+  User
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
+import { sustainabilityService } from "@/lib/sustainability.service";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
     setIsOpen(false);
-  }, [pathname]);
+    if(user){
+      getUserProfile();
+    }
+    
+  }, [pathname, user]);
+
+  const getUserProfile = async () => {
+    if(user?.uid){
+      const data = await sustainabilityService.getUserProfile(user.uid);
+      setProfile(data);
+    }
+  }
 
   const navItems = [
     { href: "/", icon: <Home size={20} />, label: "Dashboard" },
@@ -63,9 +76,9 @@ export function Sidebar() {
       <div className="mt-auto pt-6 border-t border-zinc-800/50 space-y-2">
         <NavItem 
           href="/profile" 
-          icon={<Settings size={20} />} 
-          label="Settings" 
-          active={pathname === "/settings"}
+          icon={profile.photoURL ? <img src={profile.photoURL} alt="Profile" className="w-5 h-5 rounded-full object-cover" /> : <User size={20} />} 
+          label="Profile" 
+          active={pathname === "/profile"}
         />
         <button 
           onClick={signOut}

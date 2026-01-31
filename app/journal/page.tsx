@@ -10,7 +10,7 @@ import {
   ArrowLeft, Send, Sparkles, CheckCircle2, HelpCircle, 
   Bot, User, Leaf, Zap, Droplet, Flame, Recycle, 
   MessageSquare, TrendingUp, Clock, Calendar, AlertCircle,
-  ChevronRight, Wand2, Edit3, Save, RotateCcw, Lightbulb
+  ChevronRight, Wand2, Edit3, Save, RotateCcw, Lightbulb, Trophy
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,6 +35,7 @@ export default function JournalPage() {
   const [followUpAnswer, setFollowUpAnswer] = useState("");
   const [followUpHistory, setFollowUpHistory] = useState<{ question: string, answer: string }[]>([]);
   const [stats, setStats] = useState({ streak: 0, lastEntry: "Never" });
+  const [unlockedAchievements, setUnlockedAchievements] = useState<any[]>([]);
 
   const quickPrompts = [
     "Biked to work instead of driving",
@@ -193,7 +194,7 @@ export default function JournalPage() {
     if (!user || !result) return;
     setLoading(true);
     try {
-      await sustainabilityService.upsertEntry({
+      const { id, newAchievements } = await sustainabilityService.upsertEntry({
         userId: user.uid,
         date: new Date().toISOString().split("T")[0],
         rawText: text,
@@ -201,7 +202,12 @@ export default function JournalPage() {
         points: result.points,
         aiComment: result.comment,
       });
-      router.push("/");
+
+      if (newAchievements && newAchievements.length > 0) {
+        setUnlockedAchievements(newAchievements);
+      } else {
+        router.push("/");
+      }
     } catch (err: any) {
       setError("Failed to save entry.");
     } finally {
@@ -617,9 +623,74 @@ export default function JournalPage() {
               </motion.div>
             )}
           </div>
-        </div>
-  );
-}
+
+        {/* Achievement Unlock Overlay */}
+        <AnimatePresence>
+          {unlockedAchievements.length > 0 && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/90 backdrop-blur-xl"
+              />
+              <motion.div 
+                initial={{ scale: 0.8, opacity: 0, y: 40 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.8, opacity: 0, y: 40 }}
+                className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-[3rem] p-12 text-center overflow-hidden shadow-2xl"
+              >
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                  <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-emerald-500/20 rounded-full blur-[80px] animate-pulse"></div>
+                  <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-500/20 rounded-full blur-[80px] animate-pulse"></div>
+                </div>
+
+                <div className="relative z-10 space-y-8">
+                  <div className="w-24 h-24 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center mx-auto shadow-[0_0_50px_rgba(245,158,11,0.3)]">
+                     <Trophy size={40} className="text-white" />
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <h2 className="text-4xl font-black text-white italic uppercase tracking-tighter">
+                      Achievement <span className="text-orange-400">Unlocked!</span>
+                    </h2>
+                    <p className="text-zinc-500 text-xs font-black uppercase tracking-[0.2em]">New Field Credential Earned</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    {unlockedAchievements.map((ach) => (
+                      <div key={ach.id} className="p-6 bg-zinc-950 border border-zinc-800 rounded-3xl flex items-center gap-6 group hover:border-emerald-500/30 transition-all">
+                         <span className="text-4xl">{ach.icon}</span>
+                         <div className="text-left">
+                            <h4 className="font-black text-white uppercase italic tracking-tight">{ach.name}</h4>
+                            <p className="text-xs text-zinc-500 font-medium">{ach.description}</p>
+                            <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-black uppercase mt-2">
+                               <Zap size={10} /> +{ach.pointsBonus} XP Bonus
+                            </div>
+                         </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-4">
+                    <button 
+                      onClick={() => {
+                        setUnlockedAchievements([]);
+                        router.push("/");
+                      }}
+                      className="w-full py-5 bg-white text-zinc-950 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-[0_0_30px_rgba(255,255,255,0.1)]"
+                    >
+                      Continue Mission
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
 
 
 function StatCard({ icon, label, value, color }: { 

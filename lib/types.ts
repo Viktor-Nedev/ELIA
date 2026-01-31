@@ -43,13 +43,23 @@ export interface Challenge {
   createdAt: any;
 }
 
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  pointsBonus: number;
+  unlockedAt?: any;
+}
+
 export interface UserProfile {
   id?: string;
   displayName: string;
   email: string;
   photoURL?: string;
   totalPoints: number;
-  badges: string[];
+  badges: string[]; // Maintaining for simple UI
+  earnedAchievements?: string[]; // IDs of earned achievements
   friends: string[]; // User IDs
   emailNotifications: boolean;
   isPrivate: boolean;

@@ -36,5 +36,13 @@ export const mailService = {
       "Your Weekly Sustainability Impact",
       `Here is your summary for the week: ${JSON.stringify(stats)}`
     );
+  },
+
+  async notifyAchievementEarned(toEmail: string, userName: string, achievementName: string) {
+    return this.sendEmail(
+      toEmail,
+      "Achievement Unlocked!",
+      `Your friend ${userName} just earned the "${achievementName}" achievement on ELIA! Check out their progress and see if you can match it.`
+    );
   }
 };
