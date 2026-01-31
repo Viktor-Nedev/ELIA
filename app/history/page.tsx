@@ -7,9 +7,8 @@ import { DailyEntry } from "@/lib/types";
 import { 
   ArrowLeft, BookOpen, Zap, Droplets, Leaf, Flame, Recycle, 
   Filter, TrendingUp, Calendar, ChevronDown, ChevronUp,
-  Trophy, Star, Award, Target, BarChart3, Home, Users,
-  Sparkles, MessageSquare, Brain, Clock, Hash, SortAsc, SortDesc,
-  Menu, X, Settings, LogOut, TargetIcon, Award as AwardIcon
+  Trophy, Star, Award, Target, BarChart3, Users,
+  Sparkles, MessageSquare, Brain, Clock, Hash, SortAsc, SortDesc
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,8 +25,6 @@ export default function HistoryPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('history');
   const [stats, setStats] = useState({
     totalPoints: 0,
     totalCO2: 0,
@@ -185,199 +182,8 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-zinc-100">
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-2xl shadow-2xl"
-      >
-        {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-      </button>
-
-      <div className="flex min-h-screen">
-        {/* Sidebar for Desktop */}
-        <aside className="hidden lg:flex w-64 flex-col bg-zinc-900/80 backdrop-blur-xl border-r border-zinc-800/50">
-          <div className="flex flex-col h-full p-6">
-            {/* Sidebar Logo */}
-            <div className="mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center">
-                  <Brain size={24} />
-                </div>
-                <div>
-                  <h1 className="text-xl font-black text-white uppercase italic">
-                    Eco<span className="text-emerald-500">Tracker</span>
-                  </h1>
-                  <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Mission History</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Navigation */}
-            <nav className="flex-1">
-              <div className="space-y-1">
-                <NavItem 
-                  href="/" 
-                  icon={<Home size={20} />} 
-                  label="Dashboard" 
-                  active={activeTab === 'dashboard'}
-                  onClick={() => setActiveTab('dashboard')}
-                />
-                <NavItem 
-                  href="/journal" 
-                  icon={<MessageSquare size={20} />} 
-                  label="AI Journal" 
-                  active={activeTab === 'journal'}
-                  onClick={() => setActiveTab('journal')}
-                />
-                <NavItem 
-                  href="/history" 
-                  icon={<BarChart3 size={20} />} 
-                  label="History" 
-                  active={activeTab === 'history'}
-                  onClick={() => setActiveTab('history')}
-                />
-                <NavItem 
-                  href="/challenges" 
-                  icon={<TargetIcon size={20} />} 
-                  label="Challenges" 
-                  active={activeTab === 'challenges'}
-                  onClick={() => setActiveTab('challenges')}
-                />
-                <NavItem 
-                  href="/achievements" 
-                  icon={<AwardIcon size={20} />} 
-                  label="Achievements" 
-                  active={activeTab === 'achievements'}
-                  onClick={() => setActiveTab('achievements')}
-                />
-                <NavItem 
-                  href="/friends" 
-                  icon={<Users size={20} />} 
-                  label="Friends" 
-                  active={activeTab === 'friends'}
-                  onClick={() => setActiveTab('friends')}
-                />
-              </div>
-            </nav>
-
-            {/* Bottom Actions */}
-            <div className="mt-2 pt-4 border-t border-zinc-800/50">
-              <div className="space-y-1">
-                <NavItem 
-                  href="/settings" 
-                  icon={<Settings size={20} />} 
-                  label="Settings" 
-                  active={activeTab === 'settings'}
-                  onClick={() => setActiveTab('settings')}
-                />
-                <Link 
-                  href="/login" 
-                  className="flex items-center gap-3 p-3 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors group"
-                >
-                  <LogOut size={20} />
-                  <span className="text-sm font-medium">Logout</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/* Mobile Sidebar */}
-        <AnimatePresence>
-          {sidebarOpen && (
-            <motion.aside
-              initial={{ x: -300 }}
-              animate={{ x: 0 }}
-              exit={{ x: -300 }}
-              className="lg:hidden fixed left-0 top-0 h-full w-64 bg-zinc-900/95 backdrop-blur-xl border-r border-zinc-800/50 z-40"
-            >
-              <div className="flex flex-col h-full p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center">
-                    <Brain size={24} />
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-black text-white uppercase italic">
-                      Eco<span className="text-emerald-500">Tracker</span>
-                    </h1>
-                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Mission History</p>
-                  </div>
-                </div>
-                
-                <nav className="flex-1">
-                  <div className="space-y-1">
-                    <NavItem 
-                      href="/" 
-                      icon={<Home size={20} />} 
-                      label="Dashboard" 
-                      active={activeTab === 'dashboard'}
-                      onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}
-                    />
-                    <NavItem 
-                      href="/journal" 
-                      icon={<MessageSquare size={20} />} 
-                      label="AI Journal" 
-                      active={activeTab === 'journal'}
-                      onClick={() => { setActiveTab('journal'); setSidebarOpen(false); }}
-                    />
-                    <NavItem 
-                      href="/history" 
-                      icon={<BarChart3 size={20} />} 
-                      label="History" 
-                      active={activeTab === 'history'}
-                      onClick={() => { setActiveTab('history'); setSidebarOpen(false); }}
-                    />
-                    <NavItem 
-                      href="/challenges" 
-                      icon={<TargetIcon size={20} />} 
-                      label="Challenges" 
-                      active={activeTab === 'challenges'}
-                      onClick={() => { setActiveTab('challenges'); setSidebarOpen(false); }}
-                    />
-                    <NavItem 
-                      href="/achievements" 
-                      icon={<AwardIcon size={20} />} 
-                      label="Achievements" 
-                      active={activeTab === 'achievements'}
-                      onClick={() => { setActiveTab('achievements'); setSidebarOpen(false); }}
-                    />
-                    <NavItem 
-                      href="/friends" 
-                      icon={<Users size={20} />} 
-                      label="Friends" 
-                      active={activeTab === 'friends'}
-                      onClick={() => { setActiveTab('friends'); setSidebarOpen(false); }}
-                    />
-                  </div>
-                </nav>
-                
-                <div className="mt-2 pt-4 border-t border-zinc-800/50">
-                  <div className="space-y-1">
-                    <NavItem 
-                      href="/settings" 
-                      icon={<Settings size={20} />} 
-                      label="Settings" 
-                      active={activeTab === 'settings'}
-                      onClick={() => { setActiveTab('settings'); setSidebarOpen(false); }}
-                    />
-                    <Link 
-                      href="/login" 
-                      className="flex items-center gap-3 p-3 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
-                    >
-                      <LogOut size={20} />
-                      <span className="text-sm font-medium">Logout</span>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </motion.aside>
-          )}
-        </AnimatePresence>
-
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-x-hidden">
-          <div className="max-w-[1200px] mx-auto px-4 lg:px-6 py-8 lg:py-12">
+    <div className="min-h-screen bg-[#050505] text-zinc-100 px-4 lg:px-6 py-8 lg:py-12">
+      <div className="max-w-[1200px] mx-auto">
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8 lg:mb-12">
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
@@ -668,49 +474,11 @@ export default function HistoryPage() {
                 </div>
               </div>
             )}
-          </div>
-        </div>
       </div>
     </div>
   );
 }
 
-// Helper Components
-function NavItem({ href, icon, label, active, onClick }: { 
-  href: string; 
-  icon: React.ReactNode; 
-  label: string; 
-  active?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <Link href={href}>
-      <motion.div
-        whileHover={{ x: 5 }}
-        onClick={onClick}
-        className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-300 group ${
-          active 
-            ? 'bg-gradient-to-r from-emerald-500/20 to-blue-500/20 border border-emerald-500/30 text-white' 
-            : 'hover:bg-zinc-800/50 text-zinc-400 hover:text-white'
-        }`}
-      >
-        <div className={`p-2 rounded-lg ${
-          active 
-            ? 'bg-gradient-to-r from-emerald-500 to-blue-500' 
-            : 'bg-zinc-800 group-hover:bg-emerald-500/20'
-        }`}>
-          {icon}
-        </div>
-        <span className="text-sm font-medium">{label}</span>
-        {active && (
-          <div className="ml-auto">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-          </div>
-        )}
-      </motion.div>
-    </Link>
-  );
-}
 
 function StatCard({ icon, label, value, color }: { 
   icon: React.ReactNode; 

@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description: "Secure enterprise login portal",
 };
 
+import { SidebarWrapper } from "@/components/SidebarWrapper";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,7 +31,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          {children}
+          <SidebarWrapper>
+            {children}
+          </SidebarWrapper>
         </AuthProvider>
       </body>
     </html>

@@ -7,8 +7,7 @@ import { sustainabilityService } from "@/lib/sustainability.service";
 import { Challenge } from "@/lib/types";
 import { 
   ArrowLeft, Target, CheckCircle2, Trophy, Clock, Sparkles, Plus, RefreshCw, 
-  Home, TargetIcon, BarChart3, Users, Award, Settings, LogOut,
-  Menu, X, TrendingUp, Crown, Star, Zap, Flame, Droplet, Recycle, Utensils,
+  TrendingUp, Crown, Star, Zap, Flame, Droplet, Recycle, Utensils,
   Calendar, Award as AwardIcon, TrendingUp as TrendingUpIcon, 
   ChevronRight, Circle, AlertCircle, Rocket
 } from "lucide-react";
@@ -26,8 +25,6 @@ export default function ChallengesPage() {
   const [loading, setLoading] = useState(true);
   const [habitsLoading, setHabitsLoading] = useState(false);
   const [activatingId, setActivatingId] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('challenges');
   const [leaderboardType, setLeaderboardType] = useState<'weekly' | 'monthly'>('weekly');
   const [completedChallenges, setCompletedChallenges] = useState<number>(0);
 
@@ -130,24 +127,8 @@ export default function ChallengesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] text-zinc-100">
-        <div className="flex">
-          {/* Skeleton Sidebar */}
-          <div className="hidden lg:flex w-64 flex-col bg-zinc-900/80 border-r border-zinc-800/50 p-6">
-            <div className="space-y-6">
-              <div className="w-12 h-12 bg-zinc-800 rounded-2xl animate-pulse"></div>
-              <div className="space-y-3">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="w-full h-12 bg-zinc-800 rounded-xl animate-pulse"></div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 flex items-center justify-center min-h-screen">
-            <div className="w-16 h-16 border-4 border-zinc-800 border-t-emerald-500 rounded-full animate-spin"></div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-[#050505] text-zinc-100 flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-zinc-800 border-t-emerald-500 rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -160,185 +141,7 @@ export default function ChallengesPage() {
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
 
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-2xl shadow-2xl"
-      >
-        {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-      </button>
-
-      {/* Main Container */}
-      <div className="flex min-h-screen">
-        {/* Sidebar for Desktop */}
-        <aside className="hidden lg:flex w-64 flex-col bg-zinc-900/80 backdrop-blur-xl border-r border-zinc-800/50">
-          <div className="flex flex-col h-full p-6">
-            {/* Sidebar Logo */}
-            <div className="mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center">
-                  <TargetIcon size={24} />
-                </div>
-                <div>
-                  <h1 className="text-xl font-black text-white uppercase italic">
-                    Eco<span className="text-emerald-500">Tracker</span>
-                  </h1>
-                  <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Challenges</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Navigation */}
-            <nav className="flex-1">
-              <div className="space-y-1">
-                <NavItem 
-                  href="/" 
-                  icon={<Home size={20} />} 
-                  label="Dashboard" 
-                  active={activeTab === 'dashboard'}
-                  onClick={() => setActiveTab('dashboard')}
-                />
-                <NavItem 
-                  href="/journal" 
-                  icon={<Target size={20} />} 
-                  label="AI Journal" 
-                  active={activeTab === 'journal'}
-                  onClick={() => setActiveTab('journal')}
-                />
-                <NavItem 
-                  href="/analytics" 
-                  icon={<BarChart3 size={20} />} 
-                  label="Analytics" 
-                  active={activeTab === 'analytics'}
-                  onClick={() => setActiveTab('analytics')}
-                />
-                <NavItem 
-                  href="/challenges" 
-                  icon={<TargetIcon size={20} />} 
-                  label="Challenges" 
-                  active={activeTab === 'challenges'}
-                  onClick={() => setActiveTab('challenges')}
-                />
-                <NavItem 
-                  href="/achievements" 
-                  icon={<Award size={20} />} 
-                  label="Achievements" 
-                  active={activeTab === 'achievements'}
-                  onClick={() => setActiveTab('achievements')}
-                />
-              </div>
-            </nav>
-
-            {/* Bottom Actions */}
-            <div className="mt-2 pt-4 border-t border-zinc-800/50">
-              <div className="space-y-1">
-                <NavItem 
-                  href="/settings" 
-                  icon={<Settings size={20} />} 
-                  label="Settings" 
-                  active={activeTab === 'settings'}
-                  onClick={() => setActiveTab('settings')}
-                />
-                <Link 
-                  href="/login" 
-                  className="flex items-center gap-3 p-3 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors group"
-                >
-                  <LogOut size={20} />
-                  <span className="text-sm font-medium">Logout</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/* Mobile Sidebar */}
-        <AnimatePresence>
-          {sidebarOpen && (
-            <motion.aside
-              initial={{ x: -300 }}
-              animate={{ x: 0 }}
-              exit={{ x: -300 }}
-              className="lg:hidden fixed left-0 top-0 h-full w-64 bg-zinc-900/95 backdrop-blur-xl border-r border-zinc-800/50 z-40"
-            >
-              <div className="flex flex-col h-full p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center">
-                    <TargetIcon size={24} />
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-black text-white uppercase italic">
-                      Eco<span className="text-emerald-500">Tracker</span>
-                    </h1>
-                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Challenges</p>
-                  </div>
-                </div>
-                
-                <nav className="flex-1">
-                  <div className="space-y-1">
-                    <NavItem 
-                      href="/" 
-                      icon={<Home size={20} />} 
-                      label="Dashboard" 
-                      active={activeTab === 'dashboard'}
-                      onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}
-                    />
-                    <NavItem 
-                      href="/journal" 
-                      icon={<Target size={20} />} 
-                      label="AI Journal" 
-                      active={activeTab === 'journal'}
-                      onClick={() => { setActiveTab('journal'); setSidebarOpen(false); }}
-                    />
-                    <NavItem 
-                      href="/analytics" 
-                      icon={<BarChart3 size={20} />} 
-                      label="Analytics" 
-                      active={activeTab === 'analytics'}
-                      onClick={() => { setActiveTab('analytics'); setSidebarOpen(false); }}
-                    />
-                    <NavItem 
-                      href="/challenges" 
-                      icon={<TargetIcon size={20} />} 
-                      label="Challenges" 
-                      active={activeTab === 'challenges'}
-                      onClick={() => { setActiveTab('challenges'); setSidebarOpen(false); }}
-                    />
-                    <NavItem 
-                      href="/achievements" 
-                      icon={<Award size={20} />} 
-                      label="Achievements" 
-                      active={activeTab === 'achievements'}
-                      onClick={() => { setActiveTab('achievements'); setSidebarOpen(false); }}
-                    />
-                  </div>
-                </nav>
-                
-                <div className="mt-2 pt-4 border-t border-zinc-800/50">
-                  <div className="space-y-1">
-                    <NavItem 
-                      href="/settings" 
-                      icon={<Settings size={20} />} 
-                      label="Settings" 
-                      active={activeTab === 'settings'}
-                      onClick={() => { setActiveTab('settings'); setSidebarOpen(false); }}
-                    />
-                    <Link 
-                      href="/login" 
-                      className="flex items-center gap-3 p-3 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
-                    >
-                      <LogOut size={20} />
-                      <span className="text-sm font-medium">Logout</span>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </motion.aside>
-          )}
-        </AnimatePresence>
-
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-x-hidden">
-          <div className="max-w-[1400px] mx-auto px-4 lg:px-8 pt-4 lg:pt-6">
+      <div className="max-w-[1400px] mx-auto px-4 lg:px-8 pt-4 lg:pt-6">
             
             {/* Header */}
             <motion.header 
@@ -348,7 +151,7 @@ export default function ChallengesPage() {
             >
               <div className="hidden lg:flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center">
-                  <TargetIcon size={28} />
+                  <Target size={28} />
                 </div>
                 <div>
                   <h1 className="text-3xl font-black tracking-tight text-white uppercase italic">
@@ -722,48 +525,10 @@ export default function ChallengesPage() {
               </div>
             </main>
           </div>
-        </div>
-      </div>
     </div>
   );
 }
 
-// Helper Components
-function NavItem({ href, icon, label, active, onClick }: { 
-  href: string, 
-  icon: React.ReactNode, 
-  label: string, 
-  active?: boolean,
-  onClick?: () => void
-}) {
-  return (
-    <Link href={href}>
-      <motion.div
-        whileHover={{ x: 5 }}
-        onClick={onClick}
-        className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-300 group ${
-          active 
-            ? 'bg-gradient-to-r from-emerald-500/20 to-blue-500/20 border border-emerald-500/30 text-white' 
-            : 'hover:bg-zinc-800/50 text-zinc-400 hover:text-white'
-        }`}
-      >
-        <div className={`p-2 rounded-lg ${
-          active 
-            ? 'bg-gradient-to-r from-emerald-500 to-blue-500' 
-            : 'bg-zinc-800 group-hover:bg-emerald-500/20'
-        }`}>
-          {icon}
-        </div>
-        <span className="text-sm font-medium">{label}</span>
-        {active && (
-          <div className="ml-auto">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-          </div>
-        )}
-      </motion.div>
-    </Link>
-  );
-}
 
 function StatCard({ icon, label, value, color }: { 
   icon: React.ReactNode, 
