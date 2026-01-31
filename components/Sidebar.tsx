@@ -76,7 +76,7 @@ export function Sidebar() {
       <div className="mt-auto pt-6 border-t border-zinc-800/50 space-y-2">
         <NavItem 
           href="/profile" 
-          icon={profile.photoURL ? <img src={profile.photoURL} alt="Profile" className="w-5 h-5 rounded-full object-cover" /> : <User size={20} />} 
+          icon={profile?.photoURL ? <img src={profile.photoURL} alt="Profile" className="w-5 h-5 rounded-full object-cover" /> : <User size={20} />} 
           label="Profile" 
           active={pathname === "/profile"}
         />
