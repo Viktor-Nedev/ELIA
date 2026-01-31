@@ -430,7 +430,7 @@ export default function AnalyticsPage() {
                     transition={{ delay: 0.1 }}
                     className="bg-zinc-900/40 backdrop-blur-xl border border-zinc-800/50 rounded-2xl p-6"
                   >
-                    <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-4">Key Metrics</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-4">Key Efficiency Metrics</h3>
                     <div className="space-y-4">
                       {filters.map(f => {
                         const trend = calculateTrend(f.id);

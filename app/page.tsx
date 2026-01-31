@@ -521,7 +521,7 @@ export default function DashboardPage() {
                   </div>
                   
                   <div className="h-64">
-                    <h4 className="text-sm font-bold text-zinc-300 mb-4">Emission Distribution</h4>
+                    <h4 className="text-sm font-bold text-zinc-300 mb-4">Emission Savings Distribution</h4>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
