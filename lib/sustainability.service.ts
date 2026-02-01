@@ -18,7 +18,7 @@ import {
   deleteDoc
 } from "firebase/firestore";
 import { DailyEntry, Challenge, UserProfile, EnvironmentalImpact, FriendRequest, Habit, Achievement, Squad, CommunityPost, QuizQuestion, QuizAttempt, GameSession, PublicMapPoint } from "./types";
-import { mailService } from "./mail.service";
+import { notifyFriendRequest, notifyAchievementEarned } from "./mail.service";
 
 
 // Collections
@@ -245,7 +245,7 @@ export const sustainabilityService = {
     
     // Notify if enabled
     if (toUser.emailNotifications) {
-      await mailService.notifyFriendRequest(toUser.email, fromUser.displayName);
+      await notifyFriendRequest(toUser.email, fromUser.displayName);
     }
     
     return docRef.id;
@@ -518,7 +518,7 @@ export const sustainabilityService = {
       for (const ach of newAchievements) {
         for (const friend of friends) {
           if (friend.emailNotifications) {
-            notifications.push(mailService.notifyAchievementEarned(friend.email, profile.displayName, ach.name));
+            notifications.push(notifyAchievementEarned(friend.email, profile.displayName, ach.name));
           }
         }
       }

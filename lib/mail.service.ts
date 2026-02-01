@@ -30,69 +30,68 @@ async function safeSendMail(options: any) {
   }
 }
 
-export const mailService = {
-  async sendEmail(to: string, subject: string, body: string) {
-    return safeSendMail({
-      from: "ELIA <no-reply@elia.app>",
-      to,
-      subject,
-      text: body
-    });
-  },
+export async function sendEmail(to: string, subject: string, body: string) {
+  return safeSendMail({
+    from: "ELIA <no-reply@elia.app>",
+    to,
+    subject,
+    text: body
+  });
+}
 
-  async notifyFriendRequest(toEmail: string, fromName: string) {
-    return this.sendEmail(
-      toEmail,
-      "New Friend Request on ELIA",
-      `Hi!
+export async function notifyFriendRequest(toEmail: string, fromName: string) {
+  return sendEmail(
+    toEmail,
+    "New Friend Request on ELIA",
+    `Hi!
 
 ${fromName} wants to connect with you on ELIA.
 
 Log in to accept the request 🌱
 
 – ELIA`
-    );
-  },
+  );
+}
 
-  async notifyFriendAccepted(toEmail: string, fromName: string) {
-    return this.sendEmail(
-      toEmail,
-      "Friend Request Accepted!",
-      `${fromName} accepted your friend request on ELIA 🎉
+export async function notifyFriendAccepted(toEmail: string, fromName: string) {
+  return sendEmail(
+    toEmail,
+    "Friend Request Accepted!",
+    `${fromName} accepted your friend request on ELIA 🎉
 
 You can now track each other's progress.
 
 – ELIA`
-    );
-  },
+  );
+}
 
-  async sendWeeklyReport(toEmail: string, stats: any) {
-    return this.sendEmail(
-      toEmail,
-      "Your Weekly Sustainability Impact",
-      `Your weekly summary:
+export async function sendWeeklyReport(toEmail: string, stats: any) {
+  return sendEmail(
+    toEmail,
+    "Your Weekly Sustainability Impact",
+    `Your weekly summary:
 
 ${JSON.stringify(stats, null, 2)}
 
 Keep going 🌍
 
 – ELIA`
-    );
-  },
+  );
+}
 
-  async notifyAchievementEarned(
-    toEmail: string,
-    userName: string,
-    achievementName: string
-  ) {
-    return this.sendEmail(
-      toEmail,
-      "Achievement Unlocked!",
-      `${userName} just earned "${achievementName}" 🏆
+export async function notifyAchievementEarned(
+  toEmail: string,
+  userName: string,
+  achievementName: string
+) {
+  return sendEmail(
+    toEmail,
+    "Achievement Unlocked!",
+    `${userName} just earned "${achievementName}" 🏆
 
 Check it out in ELIA!
 
 – ELIA`
-    );
-  }
-};
+  );
+}
+
