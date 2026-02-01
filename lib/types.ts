@@ -67,6 +67,7 @@ export interface UserProfile {
   suggestedHabits?: Habit[];
   squadIds?: string[];
   lastGamePlayedAt?: Record<string, any>; // gameId -> timestamp
+  highScores?: Record<string, number>; // gameId -> score
   quizStats?: {
     totalPlayed: number;
     totalCorrect: number;

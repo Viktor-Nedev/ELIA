@@ -25,7 +25,7 @@ export default function StudyPage() {
   const [currentQuiz, setCurrentQuiz] = useState<QuizQuestion | null>(null);
   const [gameActive, setGameActive] = useState(false);
   const [score, setScore] = useState(0); // This will be points earned in current session
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(99);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
@@ -36,7 +36,6 @@ export default function StudyPage() {
   const [leaderboard, setLeaderboard] = useState<UserProfile[]>([]);
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [isLoading, setIsLoading] = useState(true);
-  const [soundOn, setSoundOn] = useState(true);
 
   // Load Initial Data
   useEffect(() => {
@@ -68,20 +67,29 @@ export default function StudyPage() {
     }
   }, [gameActive, timeLeft]);
 
-  const startQuiz = async () => {
+    const startQuiz = async () => {
     if (!user) return;
+
+    // RESET IMMEDIATELY
+    setCurrentQuiz(null);
+    setQuizCompleted(false);
+    setQuizResult(null);
+    setSelectedAnswer(null);
+    setShowExplanation(false);
+    setGameActive(false);
+
     setIsLoading(true);
+
     try {
       const quiz = await sustainabilityService.getRandomQuiz(difficulty);
       if (quiz) {
         setCurrentQuiz(quiz);
         setGameActive(true);
-        setTimeLeft(60);
+        setTimeLeft(
+          quiz.difficulty === "easy" ? 40 :
+          quiz.difficulty === "medium" ? 30 : 20
+        );
         setScore(0);
-        setQuizResult(null);
-        setSelectedAnswer(null);
-        setShowExplanation(false);
-        setQuizCompleted(false);
       }
     } catch (e) {
       console.error("Failed to start quiz", e);
@@ -89,6 +97,7 @@ export default function StudyPage() {
       setIsLoading(false);
     }
   };
+
 
   const handleAnswerSelect = async (index: number) => {
     if (!gameActive || selectedAnswer !== null || !currentQuiz || !user) return;
@@ -266,12 +275,7 @@ export default function StudyPage() {
                       </div>
                       
                       <div className="flex items-center gap-4">
-                        <button 
-                          onClick={() => setSoundOn(!soundOn)}
-                          className="p-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl transition-colors"
-                        >
-                          {soundOn ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-                        </button>
+                        
                         <button 
                           onClick={() => setDifficulty(difficulty === "easy" ? "medium" : difficulty === "medium" ? "hard" : "easy")}
                           className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors text-sm font-black uppercase"
@@ -313,6 +317,7 @@ export default function StudyPage() {
                         </p>
                         <button 
                           onClick={startQuiz}
+                          disabled={isLoading}
                           className="px-8 py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest hover:scale-105 transition-transform flex items-center gap-3 mx-auto"
                         >
                           <Play className="w-5 h-5" /> Start Quiz
@@ -334,6 +339,7 @@ export default function StudyPage() {
                         <div className="flex gap-4 justify-center">
                           <button 
                             onClick={startQuiz}
+                            disabled={isLoading}
                             className="px-6 py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 hover:bg-emerald-500/20 transition-colors font-black uppercase flex items-center gap-2"
                           >
                             <RefreshCw className="w-4 h-4" /> Next Question
@@ -409,7 +415,7 @@ export default function StudyPage() {
                       </div>
                     </div>
 
-                    {/* Your Stats - Moved here */}
+                    {/* Your Stats - Moved here
                     <div className="mb-8">
                       <h4 className="text-sm font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <BarChart3 className="w-4 h-4" /> Your Game Stats
@@ -432,7 +438,7 @@ export default function StudyPage() {
                           <div className="text-2xl font-black text-white">0</div>
                         </div>
                       </div>
-                    </div>
+                    </div> */}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Game 1: Carbon Sort */}
@@ -440,26 +446,26 @@ export default function StudyPage() {
                 <div className="flex items-center gap-4 mb-4">
                     <div className="w-14 h-14 rounded-2xl bg-black/30 flex items-center justify-center">
                           <Recycle className="w-8 h-8 text-emerald-500" />
-    </div>
-    <div>
-      <h4 className="font-black text-white text-lg">Carbon Sort</h4>
-      <div className="flex items-center gap-2 mt-1">
-        <span className="text-xs px-2 py-1 bg-zinc-900 rounded-md">Easy</span>
-        <span className="text-xs text-zinc-600">50 pts/game</span>
-      </div>
-    </div>
-  </div>
-  <p className="text-zinc-400 text-sm mb-4">Sort waste items into correct recycling bins. Learn proper waste management.</p>
-  <div className="flex items-center justify-between">
-    <span className="text-xs text-zinc-600">Cooldown: 5m</span>
-    <button 
-      onClick={() => startGame('carbon-sort')}
-      className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-sm font-black uppercase hover:bg-emerald-500/20 transition-colors"
-    >
-      Play Now
-    </button>
-  </div>
-</div>
+                          </div>
+                          <div>
+                            <h4 className="font-black text-white text-lg">Carbon Sort</h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs px-2 py-1 bg-zinc-900 rounded-md">Easy</span>
+                              <span className="text-xs text-zinc-600">50 pts/game</span>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-zinc-400 text-sm mb-4">Sort waste items into correct recycling bins. Learn proper waste management.</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-zinc-600">Cooldown: 5m</span>
+                          <button 
+                            onClick={() => startGame('carbon-sort')}
+                            className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-sm font-black uppercase hover:bg-emerald-500/20 transition-colors"
+                          >
+                            Play Now
+                          </button>
+                        </div>
+                      </div>
 
 
 
@@ -579,15 +585,7 @@ export default function StudyPage() {
                 )}
               </div>
               
-              <div className="mt-6 p-4 bg-zinc-950/50 border border-zinc-800 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <Crown className="w-4 h-4 text-yellow-500" />
-                  <div>
-                    <p className="text-sm font-black text-white">Your Rank: #--</p>
-                    <p className="text-xs text-zinc-600">Play quizzes to join the leaderboard</p>
-                  </div>
-                </div>
-              </div>
+              
             </div>
 
 

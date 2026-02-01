@@ -479,7 +479,7 @@ export default function JournalPage() {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-zinc-400">Impact Score</span>
-                            <span className="text-lg font-bold text-white">{Math.round(result.points * 10)}/100</span>
+                            <span className="text-lg font-bold text-white">{Math.round(result.points * 10)}</span>
                           </div>
                           <div className="w-full bg-zinc-800/50 rounded-full h-2">
                             <motion.div 

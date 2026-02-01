@@ -463,6 +463,27 @@ export const sustainabilityService = {
         case "habit_master": 
           if (completedChallenges.length >= 10) earned = true; 
           break;
+        
+        // --- NEW ACHIEVEMENTS ---
+        case "quiz_whiz":
+          // Answered 10 quizzes correctly
+          if ((profile.quizStats?.totalCorrect || 0) >= 10) earned = true;
+          break;
+        case "quiz_perfect":
+          // Interpret "Perfect Score in a session" as a streak of 5 correct answers in quizzes
+          // Since quizzes are individual, currentStreak >= 5 is a good proxy.
+          if ((profile.quizStats?.currentStreak || 0) >= 5) earned = true;
+          break;
+        case "game_champion":
+          // Played 5 different games
+          // lastGamePlayedAt has keys for each game ID played
+          if (Object.keys(profile.lastGamePlayedAt || {}).length >= 5) earned = true;
+          break;
+        case "sorter_master":
+          // Score over 1000 in Carbon Sort
+          // Check highScores for 'carbon-sort'
+          if ((profile.highScores?.['carbon-sort'] || 0) >= 1000) earned = true;
+          break;
       }
 
       if (earned) {
@@ -823,7 +844,7 @@ export const sustainabilityService = {
     let pointsEarned = 0;
 
     if (isCorrect) {
-      pointsEarned = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : 30;
+      pointsEarned = difficulty === "easy" ? 1 : difficulty === "medium" ? 3 : 5;
       
       // Calculate streak bonus
       const userRef = doc(db, USERS_COL, userId);
@@ -831,7 +852,7 @@ export const sustainabilityService = {
       if (userSnap.exists()) {
         const stats = userSnap.data().quizStats || { currentStreak: 0 };
         const streak = stats.currentStreak || 0;
-        pointsEarned += (streak * 5); // 5 points bonus per streak
+        pointsEarned += (streak * 2); // 2 points bonus per streak
       }
     }
 
@@ -902,12 +923,21 @@ export const sustainabilityService = {
       const data = userSnap.data();
       const currentTotal = data.totalPoints || 0;
       const currentWeekly = data.weeklyPoints || 0;
-      const lastGamePlayedAt = data.lastGamePlayedAt || {};
+      
+      // Update high score for this game if applicable
+      const currentHighScores = data.highScores || {};
+      const previousHighScore = currentHighScores[gameId] || 0;
+      const newHighScores = { ...currentHighScores };
+      
+      if (score > previousHighScore) {
+        newHighScores[gameId] = score;
+      }
       
       batch.update(userRef, {
         totalPoints: currentTotal + score,
         weeklyPoints: currentWeekly + score,
-        [`lastGamePlayedAt.${gameId}`]: serverTimestamp()
+        [`lastGamePlayedAt.${gameId}`]: serverTimestamp(),
+        highScores: newHighScores
       });
     }
 

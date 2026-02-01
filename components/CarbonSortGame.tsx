@@ -296,7 +296,7 @@ const CarbonSortGameScene = ({
     if (!bin) return;
 
     const isCorrect = bin.acceptedTypes.includes(selectedItem.type);
-    const points = isCorrect ? 100 : 0;
+    const points = isCorrect ? 5 : 0;
 
 
     const updatedItem: WasteItem = {
@@ -321,7 +321,7 @@ const CarbonSortGameScene = ({
     
     if (isCorrect) {
       setTotalCorrect(prev => prev + 1);
-      setLastMessage({ text: `Correct! +100 points`, isCorrect: true });
+      setLastMessage({ text: `Correct! +5 points`, isCorrect: true });
     } else {
       setTotalIncorrect(prev => prev + 1);
       setLastMessage({ text: `Wrong! ${selectedItem.name} doesn't go in ${bin.label}`, isCorrect: false });
@@ -513,7 +513,7 @@ const CarbonSortGameScene = ({
               <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <span className="text-emerald-400 font-bold text-sm">4</span>
               </div>
-              <p className="text-zinc-300 text-base">Only correct sorts earn points (+100 each)</p>
+              <p className="text-zinc-300 text-base">Only correct sorts earn points (+5 each)</p>
             </div>
           </div>
         </div>

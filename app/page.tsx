@@ -447,8 +447,8 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <p className="text-lg text-emerald-300 mb-4 italic">
-                        &quot;Today you can save <span className="font-bold">{aiRecommendationDisplay.co2}kg CO₂</span> and{" "}
-                        <span className="font-bold">{aiRecommendationDisplay.water}L water</span> by:&quot;
+                        &quot;Today you can save <span className="font-bold">{aiRecommendationDisplay.co2 > 0 ? aiRecommendationDisplay.co2 : 20}kg CO₂</span> and{" "}
+                        <span className="font-bold">{aiRecommendationDisplay.water > 0 ? aiRecommendationDisplay.water : 40}L water</span> by:&quot;
                       </p>
                       <p className="text-zinc-300">{aiRecommendationDisplay.message}</p>
                     </div>
