@@ -16,7 +16,7 @@ import {
   limit,
   arrayUnion
 } from "firebase/firestore";
-import { DailyEntry, Challenge, UserProfile, EnvironmentalImpact, FriendRequest, Habit, Achievement, Squad, CommunityPost } from "./types";
+import { DailyEntry, Challenge, UserProfile, EnvironmentalImpact, FriendRequest, Habit, Achievement, Squad, CommunityPost, QuizQuestion, QuizAttempt, GameSession } from "./types";
 import { mailService } from "./mail.service";
 
 
@@ -27,6 +27,9 @@ const USERS_COL = "users";
 const REQUESTS_COL = "friendRequests";
 const SQUADS_COL = "squads";
 const POSTS_COL = "communityPosts";
+const QUIZZES_COL = "quizzes";
+const QUIZ_ATTEMPTS_COL = "quizAttempts";
+const GAME_SESSIONS_COL = "gameSessions";
 
 // Achievement Definitions
 export const ACHIEVEMENTS: Achievement[] = [
@@ -38,6 +41,10 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "water_1000", name: "Aquamist", description: "Saved over 1,000L of water.", icon: "💧", pointsBonus: 150 },
   { id: "co2_50", name: "Carbon Killer", description: "Saved over 50kg of CO2.", icon: "📉", pointsBonus: 200 },
   { id: "habit_master", name: "Habit Master", description: "Completed 10 challenges.", icon: "✨", pointsBonus: 300 },
+  { id: "quiz_whiz", name: "Quiz Whiz", description: "Answered 10 quizzes correctly.", icon: "🧠", pointsBonus: 100 },
+  { id: "quiz_perfect", name: "Perfect Score", description: "Got a perfect score in a quiz session.", icon: "💯", pointsBonus: 200 },
+  { id: "game_champion", name: "Game Champion", description: "Played 5 different games.", icon: "🎮", pointsBonus: 150 },
+  { id: "sorter_master", name: "Sorter Master", description: "Score over 1000 in Carbon Sort.", icon: "♻️", pointsBonus: 300 },
 ];
 
 export const sustainabilityService = {
@@ -727,5 +734,210 @@ export const sustainabilityService = {
       s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
       s.description.toLowerCase().includes(searchQuery.toLowerCase())
     );
+  },
+
+  // Quizzes & Games
+  async getRandomQuiz(difficulty: "easy" | "medium" | "hard" = "medium"): Promise<QuizQuestion | null> {
+    const q = query(
+      collection(db, QUIZZES_COL),
+      where("difficulty", "==", difficulty)
+    );
+    const snap = await getDocs(q);
+    
+    if (snap.empty) {
+      // Seed some initial quizzes if empty
+      await this.seedQuizzes(); 
+      // Retry fetch
+      const retrySnap = await getDocs(q);
+      if (retrySnap.empty) return null;
+      // Randomly pick one
+      const randomIndex = Math.floor(Math.random() * retrySnap.docs.length);
+      const doc = retrySnap.docs[randomIndex];
+      return { id: doc.id, ...doc.data() } as QuizQuestion;
+    }
+
+    const randomIndex = Math.floor(Math.random() * snap.docs.length);
+    const doc = snap.docs[randomIndex];
+    return { id: doc.id, ...doc.data() } as QuizQuestion;
+  },
+
+  async seedQuizzes() {
+    const batch = writeBatch(db);
+    const quizzes: Omit<QuizQuestion, "id">[] = [
+      {
+        question: "Which of these takes longest to decompose?",
+        options: ["Banana peel", "Paper bag", "Glass bottle", "Wool sock"],
+        correctAnswerIndex: 2,
+        difficulty: "easy",
+        explanation: "Glass can take up to 4,000 years or more to decompose, while others decompose much faster.",
+        category: "Waste"
+      },
+      {
+        question: "What percentage of the world's water is drinkable freshwater?",
+        options: ["3%", "10%", "50%", "70%"],
+        correctAnswerIndex: 0,
+        difficulty: "medium",
+        explanation: "Only about 3% of Earth's water is freshwater, and most of that is frozen in glaciers.",
+        category: "Water"
+      },
+      {
+        question: "Which gas is most responsible for the greenhouse effect?",
+        options: ["Oxygen", "Carbon Dioxide", "Nitrogen", "Argon"],
+        correctAnswerIndex: 1,
+        difficulty: "easy",
+        explanation: "Carbon dioxide (CO2) is the primary greenhouse gas emitted through human activities.",
+        category: "Climate"
+      },
+      {
+        question: "What is the 'Greenhouse Effect'?",
+        options: ["Cooling of Earth", "Trapping of heat by atmosphere", "Growth of plants", "Ozone layer depletion"],
+        correctAnswerIndex: 1,
+        difficulty: "medium",
+        explanation: "It is a process where gases in Earth's atmosphere trap the Sun's heat.",
+        category: "Climate"
+      },
+       {
+        question: "How much energy does recycling one aluminum can save?",
+        options: ["Run a TV for 3 hours", "Charge a phone once", "Light a bulb for 1 minute", "None"],
+        correctAnswerIndex: 0,
+        difficulty: "hard",
+        explanation: "Recycling just one aluminum can saves enough energy to run a 55-inch TV for 3 hours.",
+        category: "Energy"
+      }
+    ];
+
+    quizzes.forEach(q => {
+      const ref = doc(collection(db, QUIZZES_COL));
+      batch.set(ref, q);
+    });
+    await batch.commit();
+  },
+
+  async submitQuizAnswer(userId: string, questionId: string, answerIndex: number, difficulty: "easy" | "medium" | "hard") {
+    const qRef = doc(db, QUIZZES_COL, questionId);
+    const qSnap = await getDoc(qRef);
+    if (!qSnap.exists()) throw new Error("Question not found");
+    
+    const question = qSnap.data() as QuizQuestion;
+    const isCorrect = question.correctAnswerIndex === answerIndex;
+    let pointsEarned = 0;
+
+    if (isCorrect) {
+      pointsEarned = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : 30;
+      
+      // Calculate streak bonus
+      const userRef = doc(db, USERS_COL, userId);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const stats = userSnap.data().quizStats || { currentStreak: 0 };
+        const streak = stats.currentStreak || 0;
+        pointsEarned += (streak * 5); // 5 points bonus per streak
+      }
+    }
+
+    const batch = writeBatch(db);
+    
+    // Log attempt
+    const attempt: QuizAttempt = {
+      userId,
+      questionId,
+      isCorrect,
+      pointsEarned,
+      difficulty,
+      createdAt: serverTimestamp()
+    };
+    batch.set(doc(collection(db, QUIZ_ATTEMPTS_COL)), attempt);
+
+    // Update User Stats
+    const userRef = doc(db, USERS_COL, userId);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      const currentStats = data.quizStats || { totalPlayed: 0, totalCorrect: 0, currentStreak: 0, weeklyScore: 0 };
+      
+      const newStats = {
+        totalPlayed: currentStats.totalPlayed + 1,
+        totalCorrect: currentStats.totalCorrect + (isCorrect ? 1 : 0),
+        currentStreak: isCorrect ? currentStats.currentStreak + 1 : 0,
+        weeklyScore: currentStats.weeklyScore + pointsEarned
+      };
+
+      // Also update total points and weekly points
+      const currentTotal = data.totalPoints || 0;
+      const currentWeekly = data.weeklyPoints || 0;
+
+      batch.update(userRef, {
+        quizStats: newStats,
+        totalPoints: currentTotal + pointsEarned,
+        weeklyPoints: currentWeekly + pointsEarned
+      });
+    }
+
+    await batch.commit();
+    
+    if (isCorrect) {
+        await this.checkAndAwardAchievements(userId);
+    }
+    
+    return { isCorrect, pointsEarned, explanation: question.explanation };
+  },
+
+  async submitGameScore(userId: string, gameId: string, score: number) {
+    const batch = writeBatch(db);
+    
+    // Log Session
+    const session: GameSession = {
+      userId,
+      gameId,
+      score,
+      completedAt: serverTimestamp()
+    };
+    batch.set(doc(collection(db, GAME_SESSIONS_COL)), session);
+
+    // Update User Stats & Last Played
+    const userRef = doc(db, USERS_COL, userId);
+    const userSnap = await getDoc(userRef);
+    
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      const currentTotal = data.totalPoints || 0;
+      const currentWeekly = data.weeklyPoints || 0;
+      const lastGamePlayedAt = data.lastGamePlayedAt || {};
+      
+      batch.update(userRef, {
+        totalPoints: currentTotal + score,
+        weeklyPoints: currentWeekly + score,
+        [`lastGamePlayedAt.${gameId}`]: serverTimestamp()
+      });
+    }
+
+    await batch.commit();
+    await this.checkAndAwardAchievements(userId);
+  },
+
+  async checkGameCooldown(userId: string, gameId: string): Promise<{ canPlay: boolean, timeLeft?: number }> {
+    const userSnap = await getDoc(doc(db, USERS_COL, userId));
+    if (!userSnap.exists()) return { canPlay: true };
+
+    const data = userSnap.data();
+    const lastPlayed = data.lastGamePlayedAt?.[gameId];
+    
+    if (!lastPlayed) return { canPlay: true };
+
+    // 5 minutes cooldown
+    const cooldownMs = 5 * 60 * 1000; 
+    const now = Date.now();
+    const lastPlayedTime = lastPlayed.toMillis ? lastPlayed.toMillis() : Date.parse(lastPlayed); // Handle Firestore Timestamp or Date string
+    
+    const diff = now - lastPlayedTime;
+    
+    if (diff < cooldownMs) {
+      return { 
+        canPlay: false, 
+        timeLeft: Math.ceil((cooldownMs - diff) / 1000) 
+      };
+    }
+    
+    return { canPlay: true };
   }
 };

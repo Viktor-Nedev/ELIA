@@ -45,6 +45,7 @@ firestore.rules
 firebase.json
 database.rules.json
 .firebaserc
+serviceAccountKey.json
 
 #history
 /.history

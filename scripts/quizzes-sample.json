@@ -1,0 +1,97 @@
+[
+  {
+    "question": "Which material can be recycled indefinitely without losing quality?",
+    "options": ["Plastic", "Paper", "Glass", "Cardboard"],
+    "correctAnswerIndex": 2,
+    "difficulty": "easy",
+    "explanation": "Glass can be recycled endlessly without degrading, unlike plastic or paper.",
+    "category": "Recycling"
+  },
+  {
+    "question": "What is the main cause of ocean acidification?",
+    "options": ["Oil spills", "Plastic waste", "Carbon dioxide absorption", "Overfishing"],
+    "correctAnswerIndex": 2,
+    "difficulty": "medium",
+    "explanation": "The ocean absorbs CO2 from the atmosphere, forming carbonic acid and lowering pH levels.",
+    "category": "Oceans"
+  },
+  {
+    "question": "Which renewable energy source uses flowing water to generate electricity?",
+    "options": ["Solar", "Wind", "Geothermal", "Hydropower"],
+    "correctAnswerIndex": 3,
+    "difficulty": "easy",
+    "explanation": "Hydropower generates electricity using the movement of water through dams or turbines.",
+    "category": "Energy"
+  },
+  {
+    "question": "What percentage of global greenhouse gas emissions comes from the energy sector?",
+    "options": ["10%", "25%", "40%", "Over 70%"],
+    "correctAnswerIndex": 3,
+    "difficulty": "hard",
+    "explanation": "Energy production and use account for over 70% of global greenhouse gas emissions.",
+    "category": "Climate"
+  },
+  {
+    "question": "Which everyday action saves the most water?",
+    "options": ["Turning off lights", "Fixing a leaking tap", "Recycling paper", "Using public transport"],
+    "correctAnswerIndex": 1,
+    "difficulty": "medium",
+    "explanation": "A single leaking tap can waste thousands of liters of water per year.",
+    "category": "Water"
+  },
+  {
+    "question": "What does biodiversity refer to?",
+    "options": [
+      "The number of people on Earth",
+      "Variety of life in an ecosystem",
+      "Amount of oxygen in the air",
+      "Climate stability"
+    ],
+    "correctAnswerIndex": 1,
+    "difficulty": "easy",
+    "explanation": "Biodiversity describes the variety of plants, animals, and microorganisms in an ecosystem.",
+    "category": "Nature"
+  },
+  {
+    "question": "Which food typically has the highest carbon footprint?",
+    "options": ["Vegetables", "Chicken", "Beef", "Grains"],
+    "correctAnswerIndex": 2,
+    "difficulty": "medium",
+    "explanation": "Beef production requires large amounts of land, water, and feed, producing high emissions.",
+    "category": "Food"
+  },
+  {
+    "question": "What is the main purpose of a carbon tax?",
+    "options": [
+      "To punish consumers",
+      "To fund oil companies",
+      "To reduce greenhouse gas emissions",
+      "To increase energy use"
+    ],
+    "correctAnswerIndex": 2,
+    "difficulty": "hard",
+    "explanation": "Carbon taxes put a price on emissions to encourage cleaner energy and reduced pollution.",
+    "category": "Policy"
+  },
+  {
+    "question": "Which of these items should NOT be placed in a recycling bin?",
+    "options": ["Glass bottle", "Pizza box with grease", "Aluminum can", "Paper newspaper"],
+    "correctAnswerIndex": 1,
+    "difficulty": "easy",
+    "explanation": "Greasy pizza boxes contaminate recycling streams and should be composted or discarded.",
+    "category": "Waste"
+  },
+  {
+    "question": "What is the primary benefit of planting trees in cities?",
+    "options": [
+      "Increase traffic",
+      "Reduce air pollution and heat",
+      "Raise property taxes",
+      "Consume more water"
+    ],
+    "correctAnswerIndex": 1,
+    "difficulty": "medium",
+    "explanation": "Urban trees cool cities, improve air quality, and reduce the heat island effect.",
+    "category": "Urban Environment"
+  }
+]

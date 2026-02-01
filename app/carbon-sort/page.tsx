@@ -6,6 +6,8 @@ import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import * as THREE from 'three';
 import { Recycle, XCircle, CheckCircle, Clock, Trophy, AlertCircle, ArrowLeft, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/AuthContext';
+import { sustainabilityService } from '@/lib/sustainability.service';
 
 interface CarbonSortGameProps {
   onScoreUpdate?: (score: number) => void;
@@ -679,21 +681,23 @@ const CarbonSortGameScene = ({
 };
 
 export default function CarbonSortGame({ onScoreUpdate }: CarbonSortGameProps) {
+  const { user } = useAuth();
   const [gameScore, setGameScore] = useState(0);
 
   const handleScoreUpdate = (score: number) => {
     setGameScore(score);
-    
-    if (onScoreUpdate) {
-      onScoreUpdate(score);
-    }
   };
 
-  const handleGameComplete = (finalScore: number) => {
+  const handleGameComplete = async (finalScore: number) => {
     setGameScore(finalScore);
     
-    if (onScoreUpdate) {
-      onScoreUpdate(finalScore);
+    if (user && finalScore > 0) {
+        try {
+            await sustainabilityService.submitGameScore(user.uid, 'carbon-sort', finalScore);
+            console.log("Score submitted successfully");
+        } catch (error) {
+            console.error("Error submitting score:", error);
+        }
     }
   };
 

@@ -58,6 +58,7 @@ export interface UserProfile {
   email: string;
   photoURL?: string;
   totalPoints: number;
+  weeklyPoints?: number;
   badges: string[]; // Maintaining for simple UI
   earnedAchievements?: string[]; // IDs of earned achievements
   friends: string[]; // User IDs
@@ -65,6 +66,13 @@ export interface UserProfile {
   isPrivate: boolean;
   suggestedHabits?: Habit[];
   squadIds?: string[];
+  lastGamePlayedAt?: Record<string, any>; // gameId -> timestamp
+  quizStats?: {
+    totalPlayed: number;
+    totalCorrect: number;
+    currentStreak: number;
+    weeklyScore: number;
+  };
 }
 
 export interface Squad {
@@ -107,6 +115,36 @@ export interface Habit {
   description: string;
   impactType: keyof EnvironmentalImpact;
   difficulty: "easy" | "medium" | "hard";
+}
+
+
+export interface QuizQuestion {
+  id?: string;
+  ids?: string; // fallback for some ID naming inconsistencies if any
+  question: string;
+  options: string[];
+  correctAnswerIndex: number;
+  difficulty: "easy" | "medium" | "hard";
+  explanation: string;
+  category: string;
+}
+
+export interface QuizAttempt {
+  id?: string;
+  userId: string;
+  questionId: string;
+  isCorrect: boolean;
+  pointsEarned: number;
+  difficulty: "easy" | "medium" | "hard";
+  createdAt: any;
+}
+
+export interface GameSession {
+  id?: string;
+  userId: string;
+  gameId: string;
+  score: number;
+  completedAt: any;
 }
 
 export type EmissionType = 'energy' | 'transportation' | 'water' | 'food' | 'waste';

@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useAuth } from "@/lib/AuthContext";
+import { sustainabilityService } from "@/lib/sustainability.service";
+import { UserProfile, QuizQuestion } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, Brain, Trophy, Zap, Target, Flame, Star, 
@@ -16,26 +19,44 @@ import {
 } from "lucide-react";
 
 export default function StudyPage() {
-  const [activeTab, setActiveTab] = useState<"quizzes" | "games" | "rewards">("quizzes");
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [score, setScore] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<"quizzes" | "games">("quizzes");
+  // Quiz State
+  const [currentQuiz, setCurrentQuiz] = useState<QuizQuestion | null>(null);
   const [gameActive, setGameActive] = useState(false);
+  const [score, setScore] = useState(0); // This will be points earned in current session
+  const [timeLeft, setTimeLeft] = useState(60);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
-  const [soundOn, setSoundOn] = useState(true);
+  const [quizResult, setQuizResult] = useState<{isCorrect: boolean, points: number} | null>(null);
+
+  // User/Global State
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [leaderboard, setLeaderboard] = useState<UserProfile[]>([]);
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [isLoading, setIsLoading] = useState(true);
+  const [soundOn, setSoundOn] = useState(true);
 
-  // Initialize - simulate loading
+  // Load Initial Data
   useEffect(() => {
-    const timer = setTimeout(() => {
+    async function init() {
+      if (user) {
+        try {
+          const [profile, leaders] = await Promise.all([
+            sustainabilityService.getUserProfile(user.uid),
+            sustainabilityService.getLeaderboard('weekly', user.uid)
+          ]);
+          setUserProfile(profile);
+          setLeaderboard(leaders);
+        } catch (e) {
+          console.error("Failed to load study data", e);
+        }
+      }
       setIsLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
+    }
+    init();
+  }, [user]);
 
   // Start quiz timer
   useEffect(() => {
@@ -47,70 +68,75 @@ export default function StudyPage() {
     }
   }, [gameActive, timeLeft]);
 
-  const startQuiz = () => {
-    setGameActive(true);
-    setTimeLeft(60);
-    setScore(0);
-    setStreak(0);
-    setCurrentQuestion(0);
-    setQuizCompleted(false);
+  const startQuiz = async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const quiz = await sustainabilityService.getRandomQuiz(difficulty);
+      if (quiz) {
+        setCurrentQuiz(quiz);
+        setGameActive(true);
+        setTimeLeft(60);
+        setScore(0);
+        setQuizResult(null);
+        setSelectedAnswer(null);
+        setShowExplanation(false);
+        setQuizCompleted(false);
+      }
+    } catch (e) {
+      console.error("Failed to start quiz", e);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleAnswerSelect = (index: number) => {
-    if (!gameActive || selectedAnswer !== null) return;
+  const handleAnswerSelect = async (index: number) => {
+    if (!gameActive || selectedAnswer !== null || !currentQuiz || !user) return;
     
     setSelectedAnswer(index);
     
-    // Simulate API call for checking answer
-    setTimeout(() => {
-      const isCorrect = Math.random() > 0.5; // Simulated result
+    try {
+      const result = await sustainabilityService.submitQuizAnswer(user.uid, currentQuiz.id!, index, difficulty);
       
-      if (isCorrect) {
-        const pointsEarned = 100 + (streak * 10);
-        setScore(score + pointsEarned);
-        setStreak(streak + 1);
-      } else {
-        setStreak(0);
-      }
-      
-      setTimeout(() => {
-        if (currentQuestion < 4) { // Simulate 5 questions
-          setCurrentQuestion(currentQuestion + 1);
-          setSelectedAnswer(null);
-          setShowExplanation(false);
-        } else {
-          setQuizCompleted(true);
-          setGameActive(false);
-        }
-      }, 1000);
-    }, 500);
+      setQuizResult({
+        isCorrect: result.isCorrect,
+        points: result.pointsEarned
+      });
+      setShowExplanation(true);
+      setGameActive(false); // Stop timer
+      setQuizCompleted(true);
+      setScore(result.pointsEarned);
+
+      // Refresh profile to update stats
+      const profile = await sustainabilityService.getUserProfile(user.uid);
+      setUserProfile(profile);
+
+    } catch (e) {
+      console.error("Failed to submit answer", e);
+    }
   };
 
   const handleTimeUp = () => {
     setGameActive(false);
     setQuizCompleted(true);
+    // Could auto-submit as wrong here if desired
   };
 
-  const restartQuiz = () => {
-    setCurrentQuestion(0);
-    setScore(0);
-    setStreak(0);
-    setTimeLeft(60);
-    setSelectedAnswer(null);
-    setShowExplanation(false);
-    setQuizCompleted(false);
-    setGameActive(true);
-  };
-
-  const startGame = (gameId: string) => {
-    // Simulate starting a mini-game
-    console.log(`Starting game: ${gameId}`);
-    // Game logic would be implemented here
-  };
-
-  const redeemPoints = () => {
-    // Simulate redeeming points
-    console.log("Redeeming points:", score);
+  const startGame = async (gameId: string) => {
+    if (!user) return;
+    const check = await sustainabilityService.checkGameCooldown(user.uid, gameId);
+    
+    if (check.canPlay) {
+      // Navigate to game or start game component
+      // For now we only have Carbon Sort which is a separate page/component
+      if (gameId === 'carbon-sort') {
+         window.location.href = "/carbon-sort";
+      } else {
+         console.log("Game not implemented yet");
+      }
+    } else {
+      alert(`Cooldown active! Wait ${check.timeLeft}s`);
+    }
   };
 
   if (isLoading) {
@@ -192,7 +218,7 @@ export default function StudyPage() {
                   <Flame className="w-5 h-5 text-orange-400" />
                   <div>
                     <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Streak</p>
-                    <p className="text-2xl font-black text-white">{streak}</p>
+                    <p className="text-2xl font-black text-white">{userProfile?.quizStats?.currentStreak || 0}</p>
                   </div>
                 </div>
               </div>
@@ -213,12 +239,6 @@ export default function StudyPage() {
             onClick={() => setActiveTab("games")}
             label="Mini Games" 
             icon={<Gamepad2 className="w-5 h-5" />}
-          />
-          <TabButton 
-            active={activeTab === "rewards"} 
-            onClick={() => setActiveTab("rewards")}
-            label="Rewards" 
-            icon={<Award className="w-5 h-5" />}
           />
         </div>
 
@@ -270,14 +290,14 @@ export default function StudyPage() {
                         color={timeLeft < 10 ? "text-red-400" : "text-emerald-400"}
                       />
                       <StatCard 
-                        label="Current Score" 
-                        value={score.toString()} 
+                        label="Points Earned" 
+                        value={quizResult ? `+${quizResult.points}` : "0"} 
                         icon={<Star className="w-4 h-4" />}
                         color="text-yellow-400"
                       />
                       <StatCard 
-                        label="Streak Multiplier" 
-                        value={`x${streak + 1}`} 
+                        label="Streak" 
+                        value={(userProfile?.quizStats?.currentStreak || 0).toString()} 
                         icon={<Flame className="w-4 h-4" />}
                         color="text-orange-400"
                       />
@@ -289,8 +309,7 @@ export default function StudyPage() {
                         <Brain className="w-24 h-24 text-zinc-800 mx-auto mb-6" />
                         <h4 className="text-2xl font-black text-white mb-4">Ready to Test Your Knowledge?</h4>
                         <p className="text-zinc-500 mb-8 max-w-md mx-auto">
-                          Answer 5 sustainability questions correctly to earn points and climb the leaderboards.
-                          Each correct answer gives bonus points based on your streak.
+                          Answer a random sustainability question to earn points and keep your streak alive!
                         </p>
                         <button 
                           onClick={startQuiz}
@@ -299,95 +318,72 @@ export default function StudyPage() {
                           <Play className="w-5 h-5" /> Start Quiz
                         </button>
                       </div>
-                    ) : quizCompleted ? (
+                    ) : quizCompleted && quizResult ? (
                       <div className="text-center py-12">
                         <div className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-500/20 to-blue-500/20 flex items-center justify-center mx-auto mb-6">
-                          <Trophy className="w-16 h-16 text-yellow-400" />
+                           {quizResult.isCorrect ? <CheckCircle className="w-16 h-16 text-emerald-400" /> : <XCircle className="w-16 h-16 text-red-500" />}
                         </div>
-                        <h4 className="text-3xl font-black text-white mb-4">Quiz Complete!</h4>
-                        <p className="text-5xl font-black text-emerald-400 mb-2">{score} Points</p>
-                        <p className="text-zinc-500 mb-8">Your current streak: {streak} correct answers</p>
+                        <h4 className="text-3xl font-black text-white mb-4">{quizResult.isCorrect ? "Correct!" : "Incorrect"}</h4>
+                        <p className="text-5xl font-black text-emerald-400 mb-2">+{quizResult.points} Points</p>
+                        
+                        {/* Explanation */}
+                         <div className="max-w-md mx-auto mb-8 p-4 bg-zinc-950/50 rounded-xl border border-zinc-800">
+                             <p className="text-zinc-300 text-sm">{currentQuiz?.explanation}</p>
+                         </div>
+
                         <div className="flex gap-4 justify-center">
                           <button 
-                            onClick={restartQuiz}
+                            onClick={startQuiz}
                             className="px-6 py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 hover:bg-emerald-500/20 transition-colors font-black uppercase flex items-center gap-2"
                           >
-                            <RefreshCw className="w-4 h-4" /> Try Again
+                            <RefreshCw className="w-4 h-4" /> Next Question
                           </button>
-                          <button 
-                            onClick={() => setActiveTab("rewards")}
+                         <Link href="/achievements"
                             className="px-6 py-3 bg-blue-500/10 border border-blue-500/30 rounded-2xl text-blue-400 hover:bg-blue-500/20 transition-colors font-black uppercase flex items-center gap-2"
                           >
-                            <Award className="w-4 h-4" /> View Rewards
-                          </button>
+                            <Award className="w-4 h-4" /> View Achievements
+                          </Link>
                         </div>
                       </div>
                     ) : (
                       <div className="space-y-8">
-                        {/* Question Progress */}
+                        {/* Question Progress - Just one question now */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-zinc-600 uppercase tracking-widest">Question</span>
-                            <span className="text-xl font-black text-white">{currentQuestion + 1}/5</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Leaf className="w-4 h-4 text-emerald-500" />
-                            <span className="text-xs font-black uppercase tracking-widest text-emerald-500">
-                              Sustainability
-                            </span>
+                             <Leaf className="w-4 h-4 text-emerald-500" />
+                            <span className="text-xs font-black text-zinc-600 uppercase tracking-widest">{currentQuiz?.category}</span>
                           </div>
                         </div>
 
-                        {/* Question Skeleton */}
-                        <div className="p-6 bg-zinc-950/50 border border-zinc-800 rounded-2xl animate-pulse">
-                          <div className="h-6 bg-zinc-800 rounded w-3/4 mb-4"></div>
-                          <div className="h-4 bg-zinc-800 rounded w-1/2"></div>
-                          <div className="flex items-center gap-2 mt-4">
-                            <Star className="w-4 h-4 text-yellow-500" />
-                            <div className="h-3 bg-zinc-800 rounded w-16"></div>
-                          </div>
+                        {/* Question Text */}
+                        <div className="p-6 bg-zinc-950/50 border border-zinc-800 rounded-2xl">
+                          <h2 className="text-xl font-bold text-white leading-relaxed">
+                            {currentQuiz?.question}
+                          </h2>
                         </div>
 
-                        {/* Answers Skeleton */}
+                        {/* Answers */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {[1, 2, 3, 4].map((index) => (
-                            <div 
+                          {currentQuiz?.options.map((option, index) => (
+                            <button 
                               key={index}
-                              className={`p-6 border rounded-2xl text-left transition-all bg-zinc-950 border-zinc-800 hover:border-zinc-700 hover:scale-[1.02] cursor-pointer animate-pulse`}
+                              disabled={selectedAnswer !== null}
+                              className={`p-6 border rounded-2xl text-left transition-all 
+                                ${selectedAnswer === index 
+                                    ? 'bg-emerald-500/20 border-emerald-500' 
+                                    : 'bg-zinc-950 border-zinc-800 hover:border-zinc-700 hover:scale-[1.02]'
+                                }`}
                               onClick={() => handleAnswerSelect(index)}
                             >
                               <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center">
-                                  <div className="h-4 w-4 bg-zinc-700 rounded"></div>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black ${selectedAnswer === index ? 'bg-emerald-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+                                  {String.fromCharCode(65 + index)}
                                 </div>
-                                <div className="h-4 bg-zinc-800 rounded flex-1"></div>
+                                <span className="text-zinc-200 font-medium">{option}</span>
                               </div>
-                            </div>
+                            </button>
                           ))}
                         </div>
-
-                        {/* Explanation Skeleton */}
-                        {selectedAnswer !== null && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="p-6 bg-zinc-950/50 border border-zinc-800 rounded-2xl"
-                          >
-                            <div className="flex items-center gap-3 mb-3">
-                              <AlertCircle className="w-5 h-5 text-blue-500" />
-                              <h5 className="font-black text-white">Checking answer...</h5>
-                            </div>
-                            <div className="h-4 bg-zinc-800 rounded w-full mb-2"></div>
-                            <div className="h-4 bg-zinc-800 rounded w-3/4"></div>
-                            <div className="flex items-center justify-between mt-4">
-                              <div className="h-3 bg-zinc-800 rounded w-24"></div>
-                              <div className="px-4 py-2 bg-zinc-800 rounded-xl text-sm font-black uppercase flex items-center gap-2">
-                                <div className="h-3 w-12 bg-zinc-700 rounded"></div>
-                                <div className="h-3 w-3 bg-zinc-700 rounded"></div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
                       </div>
                     )}
                   </div>
@@ -455,9 +451,9 @@ export default function StudyPage() {
   </div>
   <p className="text-zinc-400 text-sm mb-4">Sort waste items into correct recycling bins. Learn proper waste management.</p>
   <div className="flex items-center justify-between">
-    <span className="text-xs text-zinc-600">Best: 0 pts</span>
+    <span className="text-xs text-zinc-600">Cooldown: 5m</span>
     <button 
-      onClick={() => window.location.href = "/carbon-sort"}
+      onClick={() => startGame('carbon-sort')}
       className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-sm font-black uppercase hover:bg-emerald-500/20 transition-colors"
     >
       Play Now
@@ -556,123 +552,6 @@ export default function StudyPage() {
                   </div>
                 </motion.div>
               )}
-
-              {activeTab === "rewards" && (
-                <motion.div
-                  key="rewards"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-8"
-                >
-                  <div className="bg-zinc-900/40 border border-zinc-800 rounded-[2.5rem] p-8">
-                    <h3 className="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3">
-                      <Award className="w-7 h-7 text-yellow-500" />
-                      Rewards & Achievements
-                    </h3>
-                    
-                    {/* Points Balance Card - Centered */}
-                    <div className="mb-8 p-6 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-zinc-800 rounded-2xl">
-                      <div className="text-center">
-                        <div className="flex items-center justify-center gap-3 mb-4">
-                          <Trophy className="w-8 h-8 text-yellow-500" />
-                          <div>
-                            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Your Balance</p>
-                            <p className="text-4xl font-black text-white">{score} points</p>
-                          </div>
-                        </div>
-                        <button 
-                          onClick={redeemPoints}
-                          className="px-8 py-3 bg-emerald-500 text-white rounded-xl font-black uppercase text-sm hover:scale-105 transition-transform mx-auto inline-flex items-center gap-2"
-                        >
-                          <Award className="w-4 h-4" /> Redeem Points
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div>
-                        <h4 className="text-lg font-black text-white mb-4">Available Badges</h4>
-                        <div className="space-y-4">
-                          <BadgeItem 
-                            title="Quiz Master" 
-                            description="Complete 10 quizzes"
-                            progress={0}
-                            total={10}
-                            icon={<Brain className="w-5 h-5" />}
-                          />
-                          <BadgeItem 
-                            title="Game Champion" 
-                            description="Play 5 different games"
-                            progress={0}
-                            total={5}
-                            icon={<Gamepad2 className="w-5 h-5" />}
-                          />
-                          <BadgeItem 
-                            title="Streak King" 
-                            description="7-day correct answer streak"
-                            progress={0}
-                            total={7}
-                            icon={<Flame className="w-5 h-5" />}
-                          />
-                          <BadgeItem 
-                            title="Eco Expert" 
-                            description="Score 1000+ points in one session"
-                            progress={0}
-                            total={1000}
-                            icon={<Leaf className="w-5 h-5" />}
-                          />
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h4 className="text-lg font-black text-white mb-4">Recent Achievements</h4>
-                        <div className="space-y-4">
-                          <AchievementItem 
-                            title="First Quiz" 
-                            description="Complete your first quiz"
-                            unlocked={score > 0}
-                            date={score > 0 ? "Today" : "Locked"}
-                          />
-                          <AchievementItem 
-                            title="Quick Learner" 
-                            description="Answer 3 questions in a row correctly"
-                            unlocked={streak >= 3}
-                            date={streak >= 3 ? "Today" : "Locked"}
-                          />
-                          <AchievementItem 
-                            title="Time Master" 
-                            description="Complete quiz with 30+ seconds remaining"
-                            unlocked={false}
-                            date="Locked"
-                          />
-                          <AchievementItem 
-                            title="Perfect Score" 
-                            description="Get all answers correct in a quiz"
-                            unlocked={false}
-                            date="Locked"
-                          />
-                        </div>
-                        
-                        <div className="mt-8 p-4 bg-zinc-950/50 rounded-2xl">
-                          <div className="flex items-center gap-3">
-                            <TargetIcon className="w-5 h-5 text-blue-500" />
-                            <div>
-                              <p className="font-black text-white">Daily Goal</p>
-                              <p className="text-xs text-zinc-600">Earn 500 points today for bonus rewards</p>
-                            </div>
-                            <div className="ml-auto">
-                              <div className="h-2 w-24 bg-zinc-800 rounded-full overflow-hidden">
-                                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min((score / 500) * 100, 100)}%` }}></div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
             </AnimatePresence>
           </div>
 
@@ -685,9 +564,19 @@ export default function StudyPage() {
               </h4>
               
               <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map((rank) => (
-                  <LeaderboardItem key={rank} rank={rank} />
-                ))}
+                {leaderboard.length > 0 ? leaderboard.slice(0, 5).map((u, i) => (
+                  <div key={u.id} className="flex items-center gap-3 p-3 bg-zinc-950/50 rounded-xl">
+                      <span className={`text-lg font-black w-6 text-center ${i === 0 ? "text-yellow-400" : i === 1 ? "text-zinc-300" : i === 2 ? "text-orange-400" : "text-zinc-600"}`}>
+                        #{i + 1}
+                      </span>
+                      <div className="flex-1">
+                          <p className="text-sm font-bold text-white max-w-[120px] truncate">{u.displayName || "Anonymous"}</p>
+                          <p className="text-xs text-zinc-500">{u.weeklyPoints || 0} pts</p>
+                      </div>
+                  </div>
+                )) : (
+                    <p className="text-zinc-500 text-center py-4">No leaders this week yet.</p>
+                )}
               </div>
               
               <div className="mt-6 p-4 bg-zinc-950/50 border border-zinc-800 rounded-xl">
@@ -776,102 +665,3 @@ function StatCard({ label, value, icon, color }: {
   );
 }
 
-function BadgeItem({ title, description, progress, total, icon }: { 
-  title: string; 
-  description: string; 
-  progress: number;
-  total: number;
-  icon: React.ReactNode;
-}) {
-  const percentage = total > 0 ? Math.min((progress / total) * 100, 100) : 0;
-  
-  return (
-    <div className="p-4 border border-zinc-800 rounded-2xl">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center">
-          {icon}
-        </div>
-        <div className="flex-1">
-          <p className="font-black text-white">{title}</p>
-          <p className="text-xs text-zinc-600">{description}</p>
-          <div className="flex items-center gap-2 mt-2">
-            <div className="flex-1 h-2 bg-zinc-900 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full"
-                style={{ width: `${percentage}%` }}
-              />
-            </div>
-            <span className="text-xs text-zinc-600">{progress}/{total}</span>
-          </div>
-        </div>
-        {progress >= total ? (
-          <CheckCircle className="w-5 h-5 text-emerald-500" />
-        ) : (
-          <Lock className="w-5 h-5 text-zinc-700" />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function AchievementItem({ title, description, unlocked, date }: { 
-  title: string; 
-  description: string; 
-  unlocked: boolean;
-  date: string;
-}) {
-  return (
-    <div className={`p-3 border rounded-xl ${unlocked ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-zinc-800 bg-zinc-950/50'}`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className={`font-black ${unlocked ? 'text-emerald-400' : 'text-zinc-500'}`}>{title}</p>
-          <p className="text-xs text-zinc-600">{description}</p>
-        </div>
-        <span className={`text-xs font-black ${unlocked ? 'text-emerald-400' : 'text-zinc-700'}`}>
-          {date}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function LeaderboardItem({ rank }: { rank: number }) {
-  const getRankColor = () => {
-    if (rank === 1) return "from-yellow-500/20 to-amber-500/10";
-    if (rank === 2) return "from-zinc-400/20 to-zinc-500/10";
-    if (rank === 3) return "from-amber-700/20 to-amber-800/10";
-    return "bg-zinc-900/50";
-  };
-
-  const points = rank === 1 ? "2,450" : rank === 2 ? "2,120" : rank === 3 ? "1,890" : `1,${(8 - rank) * 100}`;
-
-  return (
-    <div className="flex items-center justify-between p-3 hover:bg-zinc-900/50 rounded-xl transition-colors">
-      <div className="flex items-center gap-3">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${rank <= 3 ? `bg-gradient-to-br ${getRankColor()}` : 'bg-zinc-900/50'}`}>
-          <span className={`text-sm font-black ${rank <= 3 ? 'text-white' : 'text-zinc-600'}`}>#{rank}</span>
-        </div>
-        <div>
-          <p className="font-black text-white">Eco_Player_{rank}</p>
-          <div className="flex items-center gap-2 mt-1">
-            <Flame className="w-3 h-3 text-orange-500" />
-            <span className="text-xs text-zinc-600">{points} pts</span>
-          </div>
-        </div>
-      </div>
-      {rank <= 3 && <Crown className={`w-5 h-5 ${rank === 1 ? 'text-yellow-500' : rank === 2 ? 'text-zinc-400' : 'text-amber-700'}`} />}
-    </div>
-  );
-}
-
-function InfoItem({ label, value }: { 
-  label: string; 
-  value: string;
-}) {
-  return (
-    <div className="flex items-center justify-between p-3 hover:bg-zinc-900/50 rounded-xl transition-colors">
-      <span className="text-sm text-zinc-500">{label}</span>
-      <span className="text-sm font-black text-white">{value}</span>
-    </div>
-  );
-}
