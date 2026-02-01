@@ -237,13 +237,6 @@ loader.load(
     }
   ];
 
-  const stats = [
-    { value: "15K+", label: "Active Users", color: "text-emerald-400" },
-    { value: "750+", label: "Tons CO₂ Saved", color: "text-blue-400" },
-    { value: "2.5M+", label: "Liters Water Saved", color: "text-cyan-400" },
-    { value: "50K+", label: "Eco Actions Logged", color: "text-green-400" }
-  ];
-
   const team = [
     {
       name: "Viktor Nedev",
@@ -347,26 +340,6 @@ loader.load(
                     <ChevronRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
                   </motion.button>
                 </Link>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.8 }}
-                className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-16 max-w-3xl mx-auto"
-              >
-                {stats.map((stat, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 2 + index * 0.1 }}
-                    className="text-center p-4 bg-white/5 backdrop-blur-sm rounded-2xl border border-gray-700 shadow-sm"
-                  >
-                    <div className={`text-3xl font-black ${stat.color}`}>{stat.value}</div>
-                    <div className="text-sm text-gray-400 mt-2">{stat.label}</div>
-                  </motion.div>
-                ))}
               </motion.div>
             </motion.div>
           </div>
