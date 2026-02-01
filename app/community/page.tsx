@@ -65,9 +65,11 @@ export default function CommunityPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
   const [selectedFeedSquadId, setSelectedFeedSquadId] = useState<string | null>(null);
+  const [percentile, setPercentile] = useState(0);
 
   useEffect(() => {
     if (activeTab === "leaderboards") {
+      calculatePercentile();
       loadLeaderboard();
     } else if (activeTab === "squads" && user) {
       loadSquads();
@@ -132,6 +134,18 @@ export default function CommunityPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculatePercentile = async () => {
+    if (!user) return;
+     const profile = await sustainabilityService.getUserProfile(user.uid);
+
+      // Calculate Percentile
+      const allUsers = await sustainabilityService.getLeaderboard('global', user?.uid);
+      const myPoints = profile?.totalPoints || 0;
+      const countBetter = allUsers.filter(u => (u.totalPoints || 0) > myPoints).length;
+      const percentile = Math.max(1, Math.round((countBetter / allUsers.length) * 100));  
+      setPercentile(percentile);
   };
 
   const handleCreateSquad = async () => {
@@ -523,7 +537,7 @@ export default function CommunityPage() {
                             <span className="text-2xl font-black text-emerald-400">#{leaderboard.findIndex(u => u.id === user.uid) + 1}</span>
                             <div>
                               <p className="font-black text-white">Active Status</p>
-                              <p className="text-xs text-zinc-400">You are in the top {Math.max(1, Math.round(((leaderboard.findIndex(u => u.id === user.uid) + 1) / leaderboard.length) * 100))}%</p>
+                              <p className="text-xs text-zinc-400">You are in the top {percentile}%</p>
                             </div>
                           </div>
                           <Zap className="w-6 h-6 text-yellow-500" />
@@ -547,31 +561,7 @@ export default function CommunityPage() {
                     </div>
                   </div>
 
-                  <div className="bg-zinc-900/40 border border-zinc-800 rounded-[2.5rem] p-8">
-                    <h4 className="text-sm font-black text-zinc-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                      <Award className="w-4 h-4" /> Top Achievements
-                    </h4>
-                    <div className="space-y-4">
-                      <div className="p-4 border border-zinc-800 bg-zinc-950/50 rounded-2xl flex items-center gap-4">
-                        <div className="w-10 h-10 bg-yellow-500/10 rounded-xl flex items-center justify-center">
-                          <Trophy className="w-5 h-5 text-yellow-500" />
-                        </div>
-                        <div>
-                           <p className="text-sm font-black text-white uppercase italic">Eco Legend</p>
-                           <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-tighter">Most Impactful Operative</p>
-                        </div>
-                      </div>
-                      <div className="p-4 border border-zinc-800 bg-zinc-950/50 rounded-2xl flex items-center gap-4">
-                        <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center">
-                          <Leaf className="w-5 h-5 text-emerald-500" />
-                        </div>
-                        <div>
-                           <p className="text-sm font-black text-white uppercase italic">Leaf Guardian</p>
-                           <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-tighter">1,000kg CO2 Neutralized</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  
                 </div>
               </div>
             </motion.div>

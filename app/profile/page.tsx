@@ -294,7 +294,7 @@ export default function ProfilePage() {
              </div>
           </div>
 
-          <div className="lg:col-span-8 space-y-8">
+          <div className="lg:col-span-6 space-y-8">
             <AnimatePresence mode="wait">
               {tab === "squad" ? (
                 <motion.div 
@@ -390,7 +390,7 @@ export default function ProfilePage() {
             </AnimatePresence>
           </div>
 
-          <div className="lg:col-span-4 space-y-8">
+          <div className="lg:col-span-6 space-y-8">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 px-4">System Configurations</h3>
             <div className="bg-zinc-900/40 border border-zinc-800 rounded-[2.5rem] overflow-hidden">
                <div className="p-4 space-y-1">
@@ -409,7 +409,7 @@ export default function ProfilePage() {
                   <ConfigItem 
                     icon={profile?.shareDataOnMap ? <Globe className="w-5 h-5 text-blue-500" /> : <Globe className="w-5 h-5 text-zinc-600" />} 
                     title="Global Impact Map" 
-                    desc="Contribute your savings to the public heatmap."
+                    desc="Contribute savings to the public heatmap."
                     action={<Toggle checked={profile?.shareDataOnMap || false} onChange={handleToggleMapSharing} />}
                   />
                   <ConfigItem 
@@ -647,7 +647,7 @@ function Toggle({ checked, onChange }: { checked: boolean, onChange: () => void 
       onClick={(e) => { e.stopPropagation(); onChange(); }}
       className={`w-14 h-7 rounded-full p-1 transition-all duration-500 ${checked ? "bg-emerald-500/20 border border-emerald-500/50" : "bg-zinc-900 border border-zinc-800"}`}
     >
-      <div className={`w-5 h-5 rounded-full transition-all duration-500 transform ${checked ? "translate-x-7 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]" : "translate-x-0 bg-zinc-700"}`} />
+      <div className={`w-5 h-4 rounded-full transition-all duration-500 transform ${checked ? "translate-x-6 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]" : "translate-x-0 bg-zinc-700"}`} />
     </button>
   );
 }

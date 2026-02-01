@@ -36,6 +36,7 @@ export default function JournalPage() {
   const [followUpHistory, setFollowUpHistory] = useState<{ question: string, answer: string }[]>([]);
   const [stats, setStats] = useState({ streak: 0, lastEntry: "Never" });
   const [unlockedAchievements, setUnlockedAchievements] = useState<any[]>([]);
+  const [todayEntry, setTodayEntry] = useState<any>(null);
 
   const quickPrompts = [
     "Biked to work instead of driving",
@@ -59,6 +60,7 @@ export default function JournalPage() {
         ]);
 
         if (todayEntry) {
+          setTodayEntry(todayEntry);
           setText(todayEntry.rawText);
           setIsRevision(true);
           setConversation([{
@@ -530,7 +532,7 @@ export default function JournalPage() {
                           <Calendar size={16} className="text-zinc-500" />
                           <span className="text-sm text-zinc-300">Today's Progress</span>
                         </div>
-                        <span className="text-emerald-400 font-bold">{result ? 'Complete' : 'Pending'}</span>
+                        <span className="text-emerald-400 font-bold">{todayEntry ? 'Complete' : 'Pending'}</span>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-zinc-800/30 rounded-xl">
                         <div className="flex items-center gap-3">

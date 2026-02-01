@@ -329,10 +329,7 @@ export default function ChallengesPage() {
                           <p className="text-sm text-zinc-400 mb-6">{c.description}</p>
 
                           <div className="flex items-center justify-between pt-4 border-t border-zinc-800/50">
-                            <div className="flex items-center gap-2">
-                              <Clock size={12} className="text-zinc-600" />
-                              <span className="text-xs text-zinc-500">Expires in 2 days</span>
-                            </div>
+                            
                             <button
                               onClick={() => handleComplete(c)}
                               className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-xl font-bold text-white text-sm hover:scale-105 transition-all flex items-center gap-2"
@@ -530,35 +527,15 @@ export default function ChallengesPage() {
                     </div>
                     <div>
                       <h3 className="text-lg font-bold text-white">Your Progress</h3>
-                      <p className="text-sm text-emerald-400">Challenge completion rate</p>
                     </div>
                   </div>
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-zinc-300">Completion Rate</span>
-                      <span className="text-lg font-bold text-emerald-400">78%</span>
-                    </div>
-                    <div className="w-full bg-zinc-800/50 rounded-full h-2">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: '78%' }}
-                        className="h-full bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full"
-                      ></motion.div>
-                    </div>
-
-                    <div className="flex items-center justify-between mt-6">
-                      <span className="text-sm text-zinc-300">Avg Points/Day</span>
-                      <span className="text-lg font-bold text-blue-400">42</span>
-                    </div>
-                    <div className="flex items-center justify-between">
                       <span className="text-sm text-zinc-300">Current Streak</span>
                       <span className="text-lg font-bold text-orange-400">{streak} days</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-zinc-300">Next Milestone</span>
-                      <span className="text-lg font-bold text-purple-400">2,000 pts</span>
-                    </div>
+                    
                   </div>
                 </motion.div>
 
@@ -574,10 +551,6 @@ export default function ChallengesPage() {
                     <h3 className="text-sm font-bold uppercase tracking-widest text-emerald-400">Pro Tips</h3>
                   </div>
                   <ul className="space-y-3">
-                    <li className="flex items-start gap-2">
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2"></div>
-                      <p className="text-sm text-zinc-300">Complete 3 challenges daily for bonus points</p>
-                    </li>
                     <li className="flex items-start gap-2">
                       <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2"></div>
                       <p className="text-sm text-zinc-300">Higher difficulty = more points & better badges</p>

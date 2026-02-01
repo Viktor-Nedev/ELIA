@@ -473,7 +473,7 @@ export default function AnalyticsPage() {
                     initial={{ opacity: 0, x: 30 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="bg-gradient-to-b from-emerald-900/20 to-blue-900/20 backdrop-blur-xl border border-emerald-800/30 rounded-2xl p-6"
+                    className="bg-gradient-to-b from-emerald-900/20 to-blue-900/0 backdrop-blur-xl border border-emerald-800/30 rounded-2xl p-6"
                   >
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
@@ -489,12 +489,12 @@ export default function AnalyticsPage() {
                       <div className="inline-block relative">
                         <div className="w-32 h-32 rounded-full border-8 border-zinc-800 flex items-center justify-center">
                           <div className="text-center">
-                            <p className="text-3xl font-black text-white">{Math.round(averages.points * 10)}</p>
+                            <p className="text-3xl font-black text-white">{Math.round(averages.points )}</p>
                             <p className="text-xs text-zinc-500">/100</p>
                           </div>
                         </div>
                         <div 
-                          className="absolute inset-0 rounded-full border-8 border-transparent border-t-emerald-500 border-r-blue-500"
+                          className="absolute inset-0 rounded-full border-8 border-transparent border-t-emerald-500 border-r-emerald-500 border-b-emerald-500 border-l-emerald-500"
                           style={{ transform: 'rotate(45deg)' }}
                         ></div>
                       </div>

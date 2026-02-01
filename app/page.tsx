@@ -66,9 +66,6 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login");
-    }
     if (user) {
       loadDashboardData();
       setTimeout(() => setShowYesterdayReminder(true), 1500);
@@ -96,12 +93,12 @@ export default function DashboardPage() {
       if (p) {
         setProfile(p);
         
-        // Calculate Rank Percentile
-        const userRankIndex = leaderboard.findIndex(u => u.id === user.uid);
-        const percentile = userRankIndex !== -1 
-          ? Math.max(1, Math.round(((userRankIndex + 1) / leaderboard.length) * 100))
-          : 100;
-        
+        // Calculate Percentile
+        const allUsers = await sustainabilityService.getLeaderboard('global', user?.uid);
+        const myPoints = p?.totalPoints || 0;
+        const countBetter = allUsers.filter(u => (u.totalPoints || 0) > myPoints).length;
+        const percentile = Math.max(1, Math.round((countBetter / allUsers.length) * 100));
+
         // Calculate Streak (Self-contained logic for now)
         const streak = calculateStreak(entries);
         

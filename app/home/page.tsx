@@ -161,7 +161,7 @@ loader.load(
 
     const animate = () => {
       requestAnimationFrame(animate);
-      earth.rotation.y += 0.008; // Малко по-бързо въртене
+      earth.rotation.y += 0.003; // Малко по-бързо въртене
       stars.rotation.y += 0.0005;
       controls.update();
       renderer.render(scene, camera);

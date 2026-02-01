@@ -8,7 +8,7 @@ export function SidebarWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, loading } = useAuth();
 
-  const noSidebarPages = ["/login", "/signup"];
+  const noSidebarPages = ["/login", "/signup", "/home"];
   const isAuthPage = noSidebarPages.includes(pathname);
 
   if (loading) return <>{children}</>;
