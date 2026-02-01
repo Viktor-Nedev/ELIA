@@ -176,12 +176,16 @@ export default function EmissionsMapPage() {
       }
     });
 
-    map.current.on('error', (e) => {
-      console.error('Mapbox error:', e);
-      if (e.error && e.error.status === 404) {
-        map.current?.setStyle('mapbox://styles/mapbox/dark-v11');
-      }
-    });
+    map.current.on('error', (e: mapboxgl.ErrorEvent) => {
+    console.error('Mapbox error:', e);
+      
+    const err = e.error as any;
+      
+    if (err?.status === 404 || err?.statusCode === 404) {
+      map.current?.setStyle('mapbox://styles/mapbox/dark-v11');
+    }
+  });
+
 
     return () => {
       if (map.current) {
