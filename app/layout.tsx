@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ELIA - Enterprise Login",
+  title: "ELIA - Environmental Lifecycle Intelligence Assistant",
   description: "Secure enterprise login portal",
 };
 
