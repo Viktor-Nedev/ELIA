@@ -1,4 +1,3 @@
-// components/WaterFlowGame.tsx
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
@@ -20,7 +19,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
   const [waterDrops, setWaterDrops] = useState<THREE.Mesh[]>([]);
   const [gameStarted, setGameStarted] = useState(false);
   
-  // Three.js референции
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -30,19 +28,15 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
   const particlesRef = useRef<THREE.Points | null>(null);
   const glowRefs = useRef<THREE.Mesh[]>([]);
 
-  // Инициализиране на Three.js сцената
   const initScene = () => {
     if (!canvasRef.current) return;
 
-    // Почистване на предишното съдържание
     canvasRef.current.innerHTML = '';
 
-    // Настройка на сцената
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0a1a);
     scene.fog = new THREE.Fog(0x0a0a1a, 10, 50);
     
-    // Настройка на камерата
     const camera = new THREE.PerspectiveCamera(
       60,
       canvasRef.current.clientWidth / canvasRef.current.clientHeight,
@@ -52,7 +46,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
     camera.position.set(0, 8, 15);
     camera.lookAt(0, 0, 0);
     
-    // Настройка на рендерера
     const renderer = new THREE.WebGLRenderer({ 
       antialias: true, 
       alpha: true,
@@ -65,7 +58,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
     
     canvasRef.current.appendChild(renderer.domElement);
     
-    // Осветление
     const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
     scene.add(ambientLight);
     
@@ -76,21 +68,17 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
     directionalLight.shadow.mapSize.height = 1024;
     scene.add(directionalLight);
     
-    // Съхраняване на референции
     sceneRef.current = scene;
     cameraRef.current = camera;
     rendererRef.current = renderer;
     
-    // Създаване на начални обекти
     createGround(scene);
     createWaterSource(scene);
     createConservationPoints(scene);
     createObstacles(scene);
     
-    // Стартиране на анимационния цикъл
     animate();
     
-    // Обработка на промяна на размера на прозореца
     const handleResize = () => {
       if (!cameraRef.current || !rendererRef.current || !canvasRef.current) return;
       
@@ -121,13 +109,11 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
     ground.receiveShadow = true;
     scene.add(ground);
     
-    // Грид помощник
     const gridHelper = new THREE.GridHelper(30, 30, 0x0a5a2a, 0x0a3a1a);
     scene.add(gridHelper);
   };
 
   const createWaterSource = (scene: THREE.Scene) => {
-    // Източник на вода (кладенец/помпа)
     const sourceGeometry = new THREE.CylinderGeometry(0.5, 0.7, 1, 16);
     const sourceMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x4a90e2,
@@ -139,7 +125,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
     source.castShadow = true;
     scene.add(source);
     
-    // Ефект на водни частици
     createWaterParticles(scene, source.position);
   };
 
@@ -207,7 +192,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
       mesh.userData = { type: 'target', pointType: point.type };
       scene.add(mesh);
       
-      // Добавяне на ефект на сияние
       const glowGeometry = new THREE.RingGeometry(0.8, 1, 32);
       const glowMaterial = new THREE.MeshBasicMaterial({
         color: point.type === 'garden' ? 0x2ecc71 : 
@@ -264,7 +248,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
     
     const pipe = new THREE.Mesh(geometry, material);
     
-    // Позициониране и завъртане на тръбата
     pipe.position.copy(start).add(end).multiplyScalar(0.5);
     pipe.lookAt(end);
     pipe.rotateX(Math.PI / 2);
@@ -292,7 +275,7 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
     
     const drop = new THREE.Mesh(geometry, material);
     drop.position.copy(position);
-    drop.position.y += 0.5; // Стартира малко по-високо
+    drop.position.y += 0.5;
     drop.castShadow = true;
     drop.userData = { velocity: new THREE.Vector3(0, -0.05, 0) };
     sceneRef.current.add(drop);
@@ -312,7 +295,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
     for (const target of targets) {
       const distance = drop.position.distanceTo(target.position);
       if (distance < 1.5) {
-        // Успешно достигната цел
         sceneRef.current.remove(drop);
         return true;
       }
@@ -324,20 +306,17 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
   const animate = () => {
     animationRef.current = requestAnimationFrame(animate);
     
-    // Анимиране на водните капки
     dropsRef.current.forEach((drop, index) => {
       if (drop.userData.velocity) {
         drop.position.add(drop.userData.velocity);
         
-        // Проверка за сблъсък с цел
         if (checkTargetCollision(drop)) {
           dropsRef.current.splice(index, 1);
           setWaterDrops([...dropsRef.current]);
-          setScore(prev => prev + 50); // Бонус за достигане на цел
+          setScore(prev => prev + 50);
           return;
         }
         
-        // Премахване на капката ако падне под земята
         if (drop.position.y < -2) {
           if (sceneRef.current) {
             sceneRef.current.remove(drop);
@@ -349,17 +328,14 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
       }
     });
     
-    // Анимиране на частиците
     if (particlesRef.current) {
       particlesRef.current.rotation.y += 0.005;
     }
     
-    // Анимиране на сиянията
     glowRefs.current.forEach(glow => {
       glow.scale.setScalar(1 + Math.sin(Date.now() * 0.002) * 0.1);
     });
     
-    // Анимиране на тръбите (пулсиращ ефект)
     pipesRef.current.forEach(pipe => {
       pipe.scale.y = 1 + Math.sin(Date.now() * 0.003) * 0.05;
     });
@@ -385,9 +361,8 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
     
     if (intersects.length > 0) {
       const point = intersects[0].point;
-      point.y = 0.5; // Поставяне на същата височина
+      point.y = 0.5;
       
-      // Проверка дали точката не е върху пречка
       const obstacleIntersect = intersects.find(i => 
         i.object.userData.type === 'obstacle'
       );
@@ -397,21 +372,16 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
         return;
       }
       
-      // Създаване на нова тръба
       if (pipesRef.current.length === 0) {
-        // Първа тръба от източника
         createPipe(new THREE.Vector3(-10, 0.5, 0), point);
       } else {
-        // Свързване с последната тръба
         const lastPipe = pipesRef.current[pipesRef.current.length - 1];
         const endPoint = lastPipe.userData.end;
         createPipe(endPoint, point);
       }
       
-      // Създаване на водна капка в точката на свързване
       createWaterDrop(point);
       
-      // Добавяне на точки
       setScore(prev => prev + 10);
     }
   };
@@ -423,7 +393,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
     setWaterLevel(100);
     setTimeLeft(60);
     
-    // Почистване на съществуващи тръби и капки
     if (sceneRef.current) {
       pipesRef.current.forEach(pipe => sceneRef.current!.remove(pipe));
       dropsRef.current.forEach(drop => sceneRef.current!.remove(drop));
@@ -435,7 +404,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
     setWaterDrops([]);
   };
 
-  // Ефекти
   useEffect(() => {
     if (!gameStarted) {
       const cleanup = initScene();
@@ -470,7 +438,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
     }
   }, [waterLevel, isPlaying, score, onGameComplete]);
 
-  // Почистване
   useEffect(() => {
     return () => {
       if (animationRef.current) {
@@ -481,7 +448,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
 
   return (
     <div className="relative min-h-[600px] w-full">
-      {/* Заглавие на играта */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-black text-white italic uppercase flex items-center gap-3">
@@ -503,17 +469,14 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
         </button>
       </div>
 
-      {/* Игров Canvas */}
       <div 
         ref={canvasRef} 
         className="w-full h-[500px] rounded-2xl overflow-hidden cursor-crosshair border-2 border-zinc-800"
         onClick={handleCanvasClick}
       />
       
-      {/* Игров UI Overlay */}
       <div className="absolute top-20 left-4 right-4">
         <div className="flex flex-wrap gap-4">
-          {/* Точки */}
           <div className="px-6 py-3 bg-blue-500/10 border border-blue-500/30 rounded-2xl backdrop-blur-sm">
             <div className="flex items-center gap-3">
               <StarIcon className="w-5 h-5 text-blue-400" />
@@ -524,7 +487,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
             </div>
           </div>
           
-          {/* Ниво на водата */}
           <div className="px-6 py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl backdrop-blur-sm">
             <div className="flex items-center gap-3">
               <div className="relative">
@@ -542,7 +504,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
             </div>
           </div>
           
-          {/* Оставащо време */}
           <div className="px-6 py-3 bg-purple-500/10 border border-purple-500/30 rounded-2xl backdrop-blur-sm">
             <div className="flex items-center gap-3">
               <ClockIcon className="w-5 h-5 text-purple-400" />
@@ -553,7 +514,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
             </div>
           </div>
           
-          {/* Контроли */}
           <div className="flex items-center gap-2 ml-auto">
             {!isPlaying && !gameOver && (
               <button
@@ -585,7 +545,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
         </div>
       </div>
       
-      {/* Инструкции за играта */}
       <div className="absolute bottom-4 left-4 right-4">
         <div className="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -609,7 +568,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
         </div>
       </div>
       
-      {/* Екран за край на играта */}
       {gameOver && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-2xl">
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 max-w-md w-full mx-4">
@@ -650,7 +608,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
         </div>
       )}
       
-      {/* Статистика в долния десен ъгъл */}
       <div className="absolute bottom-4 right-4">
         <div className="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 rounded-2xl p-3">
           <div className="flex items-center gap-4">
@@ -669,7 +626,6 @@ export default function WaterFlowGame({ onGameComplete, onClose }: WaterFlowGame
   );
 }
 
-// Икони компоненти
 const DropletsIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />

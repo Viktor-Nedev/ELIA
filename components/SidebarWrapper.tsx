@@ -13,7 +13,7 @@ export function SidebarWrapper({ children }: { children: React.ReactNode }) {
 
   if (loading) return <>{children}</>;
 
-  // Only show sidebar if user is logged in and not on an auth page
+
   const showSidebar = user && !isAuthPage;
 
   if (!showSidebar) {

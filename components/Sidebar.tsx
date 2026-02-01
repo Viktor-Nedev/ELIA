@@ -39,6 +39,7 @@ export function Sidebar() {
     { href: "/", icon: <Home size={20} />, label: "Dashboard" },
     { href: "/journal", icon: <PlusCircle size={20} />, label: "Daily Journal" },
     { href: "/analytics", icon: <BarChart3 size={20} />, label: "Analytics" },
+    { href: "/map", icon: <Leaf size={20} />, label: "Map" },
     { href: "/challenges", icon: <TargetIcon size={20} />, label: "Challenges" },
     { href: "/community", icon: <Users size={20} />, label: "Community" },
     { href: "/achievements", icon: <Award size={20} />, label: "Achievements" },
