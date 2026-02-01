@@ -64,6 +64,8 @@ export interface UserProfile {
   friends: string[]; // User IDs
   emailNotifications: boolean;
   isPrivate: boolean;
+  shareDataOnMap?: boolean;
+  location?: { lat: number; lng: number };
   suggestedHabits?: Habit[];
   squadIds?: string[];
   lastGamePlayedAt?: Record<string, any>; // gameId -> timestamp
@@ -149,3 +151,10 @@ export interface GameSession {
 }
 
 export type EmissionType = 'energy' | 'transportation' | 'water' | 'food' | 'waste';
+
+export interface PublicMapPoint {
+  userId: string;
+  coordinates: [number, number]; // [lng, lat] for Mapbox
+  stats: EnvironmentalImpact;
+  lastUpdated: any;
+}

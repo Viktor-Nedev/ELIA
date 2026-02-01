@@ -1,24 +1,56 @@
-export const mailService = {
-  /**
-   * Mock implementation of sending an email.
-   * In production, this would call a Cloud Function or a 3rd party API.
-   */
-  async sendEmail(to: string, subject: string, body: string) {
-    console.log(`[MAIL SERVICE] Sending email to: ${to}`);
-    console.log(`[MAIL SERVICE] Subject: ${subject}`);
-    console.log(`[MAIL SERVICE] Body: ${body}`);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
+"use server";
+
+import nodemailer from "nodemailer";
+
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  },
+  tls: {
+    rejectUnauthorized: true
+  }
+});
+
+async function safeSendMail(options: any) {
+  try {
+    await transporter.verify();
+    await transporter.sendMail(options);
+    console.log(`[MAIL SERVICE] Email sent to ${options.to}`);
     return { success: true };
+  } catch (err) {
+    console.warn("[MAIL SERVICE] Email not sent (no local SMTP). Falling back to log.");
+    console.log("To:", options.to);
+    console.log("Subject:", options.subject);
+    console.log("Body:", options.text);
+    return { success: true, skipped: true };
+  }
+}
+
+export const mailService = {
+  async sendEmail(to: string, subject: string, body: string) {
+    return safeSendMail({
+      from: "ELIA <no-reply@elia.app>",
+      to,
+      subject,
+      text: body
+    });
   },
 
   async notifyFriendRequest(toEmail: string, fromName: string) {
     return this.sendEmail(
       toEmail,
       "New Friend Request on ELIA",
-      `Hi! ${fromName} wants to connect with you on ELIA. Log in to accept the request.`
+      `Hi!
+
+${fromName} wants to connect with you on ELIA.
+
+Log in to accept the request 🌱
+
+– ELIA`
     );
   },
 
@@ -26,7 +58,11 @@ export const mailService = {
     return this.sendEmail(
       toEmail,
       "Friend Request Accepted!",
-      `${fromName} accepted your friend request on ELIA. You can now track each other's progress.`
+      `${fromName} accepted your friend request on ELIA 🎉
+
+You can now track each other's progress.
+
+– ELIA`
     );
   },
 
@@ -34,15 +70,29 @@ export const mailService = {
     return this.sendEmail(
       toEmail,
       "Your Weekly Sustainability Impact",
-      `Here is your summary for the week: ${JSON.stringify(stats)}`
+      `Your weekly summary:
+
+${JSON.stringify(stats, null, 2)}
+
+Keep going 🌍
+
+– ELIA`
     );
   },
 
-  async notifyAchievementEarned(toEmail: string, userName: string, achievementName: string) {
+  async notifyAchievementEarned(
+    toEmail: string,
+    userName: string,
+    achievementName: string
+  ) {
     return this.sendEmail(
       toEmail,
       "Achievement Unlocked!",
-      `Your friend ${userName} just earned the "${achievementName}" achievement on ELIA! Check out their progress and see if you can match it.`
+      `${userName} just earned "${achievementName}" 🏆
+
+Check it out in ELIA!
+
+– ELIA`
     );
   }
 };

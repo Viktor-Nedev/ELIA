@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Home, PlusCircle, BarChart3, TargetIcon, Users, Award, LogOut, Leaf, Menu, X, 
+  Home, PlusCircle, BarChart3, TargetIcon, Users, Award, LogOut, Menu, X, Map,
   User,
   BookOpen,
   ChevronRight
@@ -39,7 +39,7 @@ export function Sidebar() {
     { href: "/", icon: <Home size={20} />, label: "Dashboard" },
     { href: "/journal", icon: <PlusCircle size={20} />, label: "Daily Journal" },
     { href: "/analytics", icon: <BarChart3 size={20} />, label: "Analytics" },
-    { href: "/map", icon: <Leaf size={20} />, label: "Map" },
+    { href: "/map", icon: <Map size={20} />, label: "Map" },
     { href: "/challenges", icon: <TargetIcon size={20} />, label: "Challenges" },
     { href: "/community", icon: <Users size={20} />, label: "Community" },
     { href: "/achievements", icon: <Award size={20} />, label: "Achievements" },

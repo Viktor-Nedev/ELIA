@@ -151,6 +151,40 @@ export default function ProfilePage() {
     }
   }, [user, profile]);
 
+  const handleToggleMapSharing = useCallback(async () => {
+    if (!user || !profile) return;
+    const newVal = !profile.shareDataOnMap;
+    
+    if (newVal) {
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(async (position) => {
+          try {
+             await sustainabilityService.toggleMapSharing(user.uid, true, {
+               lat: position.coords.latitude,
+               lng: position.coords.longitude
+             });
+             setProfile({ ...profile, shareDataOnMap: true, location: { lat: position.coords.latitude, lng: position.coords.longitude } });
+          } catch (err) {
+            console.error("Error enabling map sharing:", err);
+            alert("Failed to enable map sharing.");
+          }
+        }, (error) => {
+          console.error("Geolocation error:", error);
+          alert("We need your location to add you to the map. Please enable location services.");
+        });
+      } else {
+        alert("Geolocation is not supported by your browser.");
+      }
+    } else {
+      try {
+        await sustainabilityService.toggleMapSharing(user.uid, false);
+        setProfile({ ...profile, shareDataOnMap: false });
+      } catch (err) {
+        console.error("Error disabling map sharing:", err);
+      }
+    }
+  }, [user, profile]);
+
   const sortedFriends = useMemo(() => {
     return [...friendsProfiles].sort((a, b) => b.totalPoints - a.totalPoints);
   }, [friendsProfiles]);
@@ -371,6 +405,12 @@ export default function ProfilePage() {
                     title="Ghost Mode" 
                     desc="Invisibility to global scanners."
                     action={<Toggle checked={profile?.isPrivate || false} onChange={handleTogglePrivacy} />}
+                  />
+                  <ConfigItem 
+                    icon={profile?.shareDataOnMap ? <Globe className="w-5 h-5 text-blue-500" /> : <Globe className="w-5 h-5 text-zinc-600" />} 
+                    title="Global Impact Map" 
+                    desc="Contribute your savings to the public heatmap."
+                    action={<Toggle checked={profile?.shareDataOnMap || false} onChange={handleToggleMapSharing} />}
                   />
                   <ConfigItem 
                     icon={<Shield className="w-5 h-5 text-zinc-500" />} 

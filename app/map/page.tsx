@@ -6,6 +6,8 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { ArrowLeft, Cloud, Droplet, Flame, Zap, Recycle, Leaf, Filter, Layers, Download, Maximize2, Minimize2 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { sustainabilityService } from "@/lib/sustainability.service";
+import { PublicMapPoint } from "@/lib/types";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
@@ -77,45 +79,48 @@ export default function EmissionsMapPage() {
     const loadEmissionsData = async () => {
       setLoading(true);
       
-      const mockData: EmissionData[] = Array.from({ length: 14 }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        return {
-          date: date.toISOString().split('T')[0],
-          co2: Math.random() * 10 + 2,
-          water: Math.random() * 100 + 20,
-          energy: Math.random() * 15 + 5,
-          waste: Math.random() * 5 + 1,
-          food: Math.random() * 3 + 0.5,
-          location: generateRandomPosition()
-        };
-      });
+      try {
+        const publicPoints = await sustainabilityService.getGlobalMapData();
+        
+        const realData: EmissionData[] = publicPoints.map(point => ({
+          date: point.lastUpdated?.toDate().toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+          co2: point.stats.co2,
+          water: point.stats.water,
+          energy: point.stats.energy,
+          waste: point.stats.waste,
+          food: point.stats.food,
+          location: point.coordinates
+        }));
 
-      setEmissionsData(mockData);
+        setEmissionsData(realData);
 
-      const generatedClouds: EmissionCloud[] = [];
-      mockData.forEach((data, index) => {
-        if (data.location) {
-          const emissionTypes: EmissionType[] = ['co2', 'water', 'energy', 'waste', 'food'];
-          emissionTypes.forEach(type => {
-            if (data[type] > 0) {
-              generatedClouds.push({
-                id: `${type}-${index}`,
-                type,
-                value: data[type],
-                position: data.location!,
-                radius: Math.max(100, Math.min(1000, data[type] * 50)),
-                color: emissionColors[type]
-              });
-            }
-          });
-        }
-      });
+        const generatedClouds: EmissionCloud[] = [];
+        realData.forEach((data, index) => {
+          if (data.location) {
+            const emissionTypes: EmissionType[] = ['co2', 'water', 'energy', 'waste', 'food'];
+            emissionTypes.forEach(type => {
+              if (data[type] > 0) {
+                generatedClouds.push({
+                  id: `${type}-${index}`,
+                  type,
+                  value: data[type],
+                  position: data.location!,
+                  radius: Math.max(100, Math.min(10000, data[type] * 50)), // Increased max radius for visibility
+                  color: emissionColors[type]
+                });
+              }
+            });
+          }
+        });
 
-      setClouds(generatedClouds);
-      setLoading(false);
+        setClouds(generatedClouds);
+      } catch (error) {
+        console.error("Failed to load map data:", error);
+      } finally {
+        setLoading(false);
+      }
     };
-
+    
     loadEmissionsData();
   }, [dateRange]);
 
@@ -123,15 +128,16 @@ export default function EmissionsMapPage() {
     if (!mapContainer.current || map.current) return;
 
     map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/vikdev/cml2u065q005n01qwebg569qo',
-      center: [23.3219, 42.6977],
-      zoom: 10,
-      pitch: 0,
-      bearing: 0,
-      antialias: true,
-      attributionControl: false
-    });
+    container: mapContainer.current,
+    style: 'mapbox://styles/vikdev/cml2u065q005n01qwebg569qo',
+    center: [23.3219, 42.6977],
+    zoom: 10,
+    pitch: 0,
+    bearing: 0,
+    antialias: true,
+    attributionControl: false,
+    preserveDrawingBuffer: true 
+  });
 
     map.current.on('load', () => {
       console.log('Mapbox map loaded successfully!');
@@ -157,9 +163,9 @@ export default function EmissionsMapPage() {
           }
         });
 
-        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        map.current!.addControl(new mapboxgl.NavigationControl(), 'top-right');
         
-        map.current.addControl(new mapboxgl.AttributionControl(), 'bottom-right');
+        map.current!.addControl(new mapboxgl.AttributionControl(), 'bottom-right');
 
         setTimeout(() => {
           updateCloudsOnMap();
@@ -304,7 +310,7 @@ export default function EmissionsMapPage() {
         })
           .setLngLat(cloud.position)
           .setPopup(popup)
-          .addTo(map.current);
+          .addTo(map.current!);
 
       } catch (error) {
         console.error('Error adding cloud:', error);
@@ -324,14 +330,8 @@ export default function EmissionsMapPage() {
 
   const handleFullscreen = () => {
     if (!mapContainer.current) return;
-
-    if (!document.fullscreenElement) {
-      mapContainer.current.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
-    }
+    mapContainer.current.requestFullscreen();
+    setIsFullscreen(true);
   };
 
   const exportMap = async () => {
@@ -343,10 +343,13 @@ export default function EmissionsMapPage() {
     setExporting(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const canvas = map.current.getCanvas();
-      
+      await new Promise<void>(resolve => {
+        map.current!.once('idle', () => resolve());
+      });
+
+      const canvas = map.current!.getCanvas();
+      map.current!.triggerRepaint();
+
       if (!canvas) {
         throw new Error('Canvas not found');
       }
@@ -409,10 +412,8 @@ export default function EmissionsMapPage() {
       context.fillStyle = '#a1a1aa';
       
       const stats = [
-        `Clouds: ${clouds.length}`,
         `Data Points: ${emissionsData.length}`,
         `Filter: ${selectedEmission === 'all' ? 'All' : selectedEmission}`,
-        `Period: ${dateRange === 'week' ? '7 Days' : dateRange === 'month' ? '30 Days' : 'All Time'}`,
         `Avg CO₂: ${emissionsData.reduce((sum, d) => sum + d.co2, 0) / emissionsData.length || 0}kg`,
         `Avg Water: ${emissionsData.reduce((sum, d) => sum + d.water, 0) / emissionsData.length || 0}L`
       ];
@@ -427,7 +428,7 @@ export default function EmissionsMapPage() {
       context.fillStyle = 'white';
       context.font = '10px Arial';
       context.textAlign = 'center';
-      context.fillText('Generated by EcoTrack - Saving the planet one emission at a time', canvas.width / 2, canvas.height - 10);
+      context.fillText('Generated by ELIA - Saving the planet one emission at a time', canvas.width / 2, canvas.height - 10);
       
       const link = document.createElement('a');
       const timestamp = `${dateStr}_${timeStr}`;
@@ -510,8 +511,8 @@ export default function EmissionsMapPage() {
               onClick={handleFullscreen}
               className="px-4 py-2 bg-zinc-900/50 border border-zinc-800/50 rounded-xl hover:bg-zinc-800/50 transition-colors flex items-center gap-2"
             >
-              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              <span className="text-sm font-medium">{isFullscreen ? 'Exit' : 'Fullscreen'}</span>
+              <Maximize2 size={16} />
+              <span className="text-sm font-medium">Fullscreen</span>
             </button>
           </div>
         </motion.header>

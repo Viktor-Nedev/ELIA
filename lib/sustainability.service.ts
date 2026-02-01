@@ -14,9 +14,10 @@ import {
   serverTimestamp,
   writeBatch,
   limit,
-  arrayUnion
+  arrayUnion,
+  deleteDoc
 } from "firebase/firestore";
-import { DailyEntry, Challenge, UserProfile, EnvironmentalImpact, FriendRequest, Habit, Achievement, Squad, CommunityPost, QuizQuestion, QuizAttempt, GameSession } from "./types";
+import { DailyEntry, Challenge, UserProfile, EnvironmentalImpact, FriendRequest, Habit, Achievement, Squad, CommunityPost, QuizQuestion, QuizAttempt, GameSession, PublicMapPoint } from "./types";
 import { mailService } from "./mail.service";
 
 
@@ -758,6 +759,53 @@ export const sustainabilityService = {
   },
 
   // Quizzes & Games
+  // Map & Public Data
+  async toggleMapSharing(userId: string, enable: boolean, location?: { lat: number, lng: number }) {
+    const userRef = doc(db, USERS_COL, userId);
+    
+    await updateDoc(userRef, { 
+      shareDataOnMap: enable,
+      ...(location ? { location } : {})
+    });
+
+    const mapDataRef = doc(db, "publicMapData", userId);
+
+    if (enable && location) {
+      // Calculate total stats
+      const allEntriesQuery = query(collection(db, ENTRIES_COL), where("userId", "==", userId));
+      const snap = await getDocs(allEntriesQuery);
+      
+      const totalImpact = snap.docs.reduce((acc, doc) => {
+        const data = doc.data();
+        return {
+          co2: acc.co2 + (data.emissions?.co2 || 0),
+          water: acc.water + (data.emissions?.water || 0),
+          energy: acc.energy + (data.emissions?.energy || 0),
+          waste: acc.waste + (data.emissions?.waste || 0),
+          food: acc.food + (data.emissions?.food || 0),
+        };
+      }, { co2: 0, water: 0, energy: 0, waste: 0, food: 0 });
+
+      await setDoc(mapDataRef, {
+        userId,
+        coordinates: [location.lng, location.lat], // GeoJSON format: [lng, lat]
+        stats: totalImpact,
+        lastUpdated: serverTimestamp()
+      });
+    } else {
+      // If disabling or enabling without location (shouldnt happen), remove from map
+      if (!enable) {
+         await deleteDoc(mapDataRef);
+      }
+    }
+  },
+
+  async getGlobalMapData() {
+    const q = query(collection(db, "publicMapData"));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => d.data() as PublicMapPoint);
+  },
+
   async getRandomQuiz(difficulty: "easy" | "medium" | "hard" = "medium"): Promise<QuizQuestion | null> {
     const q = query(
       collection(db, QUIZZES_COL),
